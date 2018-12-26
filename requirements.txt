@@ -1,0 +1,10 @@
+aelog>=1.0.3
+aredis>=1.1.3
+hiredis
+aiomysql>=0.0.19
+sqlalchemy>=1.2.12
+aiohttp>=3.3.2
+cchardet
+aiodns=
+motor>=1.2.2
+ujson
