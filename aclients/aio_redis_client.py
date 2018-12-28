@@ -43,7 +43,7 @@ class AIORedisClient(object):
     redis 非阻塞工具类
     """
 
-    def __init__(self, app=None, *, host="127.0.0.1", port=6379, dbname=0, passwd="", pool_size=50, **kwargs):
+    def __init__(self, app=None, *, host="127.0.0.1", port=6379, dbname=0, passwd="", pool_size=50):
         """
         redis 非阻塞工具类
         Args:
@@ -60,7 +60,7 @@ class AIORedisClient(object):
         if app is not None:
             self.init_app(app, host=host, port=port, dbname=dbname, passwd=passwd, pool_size=pool_size)
 
-    def init_app(self, app, *, host="127.0.0.1", port=6379, dbname=None, passwd="", pool_size=50):
+    def init_app(self, app, *, host="127.0.0.1", port=6379, dbname=0, passwd="", pool_size=50):
         """
         redis 非阻塞工具类
         Args:
@@ -79,8 +79,10 @@ class AIORedisClient(object):
         passwd = app.config.get("ACLIENTS_REDIS_PASSWD", None) or passwd
         pool_size = app.config.get("ACLIENTS_REDIS_POOL_SIZE", None) or pool_size
 
+        passwd = passwd if passwd is None else str(passwd)
+
         @app.listener('before_server_start')
-        def open_connection():
+        def open_connection(app_, loop):
             """
 
             Args:
@@ -94,7 +96,7 @@ class AIORedisClient(object):
             self.redis_db = aredis.StrictRedis(connection_pool=self.pool, decode_responses=True)
 
         @app.listener('after_server_stop')
-        def close_connection():
+        def close_connection(app_, loop):
             """
             释放redis连接池所有连接
             Args:

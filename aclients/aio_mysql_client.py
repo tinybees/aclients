@@ -76,11 +76,12 @@ class AIOMysqlClient(object):
         message = app.config.get("ACLIENTS_MYSQL_MESSAGE", None) or kwargs.get("message")
         use_zh = app.config.get("ACLIENTS_MYSQL_MSGZH", None) or kwargs.get("use_zh", True)
 
+        passwd = passwd if passwd is None else str(passwd)
         self.message = verify_message(mysql_msg, message)
         self.msg_zh = "msg_zh" if use_zh else "msg_en"
 
         @app.listener('before_server_start')
-        async def open_connection():
+        async def open_connection(app_, loop):
             """
 
             Args:
@@ -94,7 +95,7 @@ class AIOMysqlClient(object):
                                                   password=passwd, maxsize=pool_size, charset="utf8")
 
         @app.listener('after_server_stop')
-        async def close_connection():
+        async def close_connection(app_, loop):
             """
 
             Args:

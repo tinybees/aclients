@@ -75,11 +75,12 @@ class AIOMongoClient(object):
         message = app.config.get("ACLIENTS_MONGO_MESSAGE", None) or kwargs.get("message")
         use_zh = app.config.get("ACLIENTS_MONGO_MSGZH", None) or kwargs.get("use_zh", True)
 
+        passwd = passwd if passwd is None else str(passwd)
         self.message = verify_message(mongo_msg, message)
         self.msg_zh = "msg_zh" if use_zh else "msg_en"
 
         @app.listener('before_server_start')
-        def open_connection():
+        def open_connection(app_, loop):
             """
 
             Args:
@@ -100,16 +101,16 @@ class AIOMongoClient(object):
                 aelog.exception("Mongo DB init failed! error: {}".format(err))
                 raise MongoError("Mongo DB init failed!") from err
 
-            @app.listener('after_server_stop')
-            def close_connection():
-                """
+        @app.listener('after_server_stop')
+        def close_connection(app_, loop):
+            """
 
-                Args:
+            Args:
 
-                Returns:
+            Returns:
 
-                """
-                self.client.close()
+            """
+            self.client.close()
 
     async def _insert_document(self, name, document, insert_one=True):
         """

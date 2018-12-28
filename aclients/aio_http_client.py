@@ -62,7 +62,7 @@ class AIOHttpClient(object):
         self.msg_zh = "msg_zh" if use_zh else "msg_en"
 
         @app.listener('before_server_start')
-        def open_connection():
+        def open_connection(app_, loop):
             """
 
             Args:
@@ -73,7 +73,7 @@ class AIOHttpClient(object):
             self.session = aiohttp.ClientSession()
 
         @app.listener('after_server_stop')
-        async def close_connection():
+        async def close_connection(app_, loop):
             """
             释放redis连接池所有连接
             Args:
