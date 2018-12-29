@@ -6,6 +6,7 @@
 @software: PyCharm
 @time: 18-12-25 下午5:15
 """
+import secrets
 import ujson
 import uuid
 from collections import MutableMapping
@@ -29,9 +30,9 @@ class Session(object):
 
     """
 
-    def __init__(self, user_id, *, session_id=None, org_id=None, permission_id=None, **kwargs):
+    def __init__(self, user_id, *, org_id=None, permission_id=None, **kwargs):
         self.user_id = user_id
-        self.session_id = session_id or uuid.uuid4().hex
+        self.session_id = secrets.token_urlsafe()
         self.org_id = org_id or uuid.uuid4().hex
         self.permission_id = permission_id or uuid.uuid4().hex
         for k, v in kwargs.items():
@@ -169,12 +170,13 @@ class AIORedisClient(object):
             aelog.exception("update session error: {}, {}".format(session_data["session_id"], e))
             raise RedisClientError(str(e))
 
-    async def get_session(self, session_id, ex=EXPIRED) -> Session:
+    async def get_session(self, session_id, ex=EXPIRED, cls_flag=False) -> Session:
         """
         获取session
         Args:
             session_id: session id
             ex: 过期时间，单位秒
+            cls_flag: 是否返回session的类实例
         Returns:
 
         """
@@ -191,8 +193,12 @@ class AIORedisClient(object):
             raise RedisClientError(e)
         else:
             session_data = {key: val if isinstance(val, str) else ujson.loads(val) for key, val in session_data.items()}
-            return Session(user_id=session_data.pop('user_id'), session_id=session_data["session_id"],
-                           org_id=session_data["org_id"], permission_id=session_data["permission_id"], **session_data)
+            if not cls_flag:
+                return session_data
+            else:
+                return Session(user_id=session_data.pop('user_id'), session_id=session_data["session_id"],
+                               org_id=session_data["org_id"], permission_id=session_data["permission_id"],
+                               **session_data)
 
     async def verify(self, session_id):
         """
@@ -207,8 +213,7 @@ class AIORedisClient(object):
         except RedisClientError as e:
             raise RedisClientError(str(e))
         else:
-            #  这一步按照现有的逻辑是多余的，不过可以暂时保留
-            if session_id != session.session_id:
+            if not session:
                 raise RedisClientError("invalid session_id, session_id={}".format(session_id))
             return session
 
