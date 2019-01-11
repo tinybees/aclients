@@ -180,7 +180,7 @@ class AIOHttpClient(object):
                         resp_bytes = await resp.read()
                     except (aiohttp.ClientResponseError, aiohttp.ClientError) as e:
                         aelog.exception(e)
-                        raise HttpError(e.code, message=self.message[200][self.msg_zh])
+                        raise HttpError(e.code, message=self.message[200][self.msg_zh], error=e)
                     else:
                         return AsyncResponse(resp.status, resp.reason, resp.headers, resp.cookies, resp_body="",
                                              content=resp_bytes)

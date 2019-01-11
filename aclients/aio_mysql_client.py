@@ -176,7 +176,7 @@ class AIOMysqlClient(object):
                     except Exception as e:
                         await trans.rollback()
                         aelog.exception(e)
-                        raise HttpError(500, message=self.message[1][self.msg_zh])
+                        raise HttpError(500, message=self.message[1][self.msg_zh], error=e)
                     else:
                         # 理论也是不应该加的，但是出现过一个连接提交后另一个连接拿不到数据的情况，而开启autocommit后就可以了，因此这里
                         # 加一条
@@ -223,7 +223,7 @@ class AIOMysqlClient(object):
                     except Exception as e:
                         await trans.rollback()
                         aelog.exception(e)
-                        raise HttpError(500, message=self.message[2][self.msg_zh])
+                        raise HttpError(500, message=self.message[2][self.msg_zh], error=e)
                     else:
                         await conn.execute('commit')
         return cursor.rowcount
@@ -257,7 +257,7 @@ class AIOMysqlClient(object):
                     except Exception as e:
                         await trans.rollback()
                         aelog.exception(e)
-                        raise HttpError(500, message=self.message[3][self.msg_zh])
+                        raise HttpError(500, message=self.message[3][self.msg_zh], error=e)
                     else:
                         await conn.execute('commit')
         return cursor.rowcount
@@ -287,7 +287,7 @@ class AIOMysqlClient(object):
                     await conn.execute('commit')  # 理论上不应该加这个的，但是这里默认就会启动一个事务，很奇怪
             except (MySQLError, Error) as err:
                 aelog.exception("Find one data failed, {}".format(err))
-                raise HttpError(400, message=self.message[4][self.msg_zh])
+                raise HttpError(400, message=self.message[4][self.msg_zh], error=err)
             else:
                 return dict(resp) if resp else None
 
@@ -326,7 +326,7 @@ class AIOMysqlClient(object):
                     await conn.execute('commit')
             except (MySQLError, Error) as err:
                 aelog.exception("Find data failed, {}".format(err))
-                raise HttpError(400, message=self.message[5][self.msg_zh])
+                raise HttpError(400, message=self.message[5][self.msg_zh], error=err)
             else:
                 return [dict(val) for val in resp] if resp else None
 
@@ -355,7 +355,7 @@ class AIOMysqlClient(object):
                     await conn.execute('commit')
             except (MySQLError, Error) as err:
                 aelog.exception("Find data failed, {}".format(err))
-                raise HttpError(400, message=self.message[5][self.msg_zh])
+                raise HttpError(400, message=self.message[5][self.msg_zh], error=err)
             else:
                 return resp.count
 
@@ -462,7 +462,7 @@ class AIOMysqlClient(object):
                 except Exception as e:
                     await trans.rollback()
                     aelog.exception(e)
-                    raise HttpError(500, message=self.message[6][self.msg_zh])
+                    raise HttpError(500, message=self.message[6][self.msg_zh], error=e)
                 else:
                     await conn.execute('commit')
         return cursor
@@ -482,7 +482,7 @@ class AIOMysqlClient(object):
                 await conn.execute('commit')
         except (MySQLError, Error) as err:
             aelog.exception("Find data failed, {}".format(err))
-            raise HttpError(400, message=self.message[5][self.msg_zh])
+            raise HttpError(400, message=self.message[5][self.msg_zh], error=err)
         else:
             return [dict(val) for val in resp] if resp else None
 

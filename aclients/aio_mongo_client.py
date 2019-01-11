@@ -133,7 +133,7 @@ class AIOMongoClient(object):
             raise MongoDuplicateKeyError("Duplicate key error, {}".format(e))
         except PyMongoError as err:
             aelog.exception("Insert one document failed, {}".format(err))
-            raise HttpError(400, message=self.message[100][self.msg_zh])
+            raise HttpError(400, message=self.message[100][self.msg_zh], error=err)
         else:
             return str(result.inserted_id) if insert_one else (str(val) for val in result.inserted_ids)
 
@@ -164,7 +164,7 @@ class AIOMongoClient(object):
             raise MongoInvalidNameError("Invalid collention name {} {}".format(name, e))
         except PyMongoError as err:
             aelog.exception("Find one document failed, {}".format(err))
-            raise HttpError(400, message=self.message[103][self.msg_zh])
+            raise HttpError(400, message=self.message[103][self.msg_zh], error=err)
         else:
             if find_data and find_data.get("_id", None) is not None:
                 find_data["id"] = str(find_data.pop("_id"))
@@ -196,7 +196,7 @@ class AIOMongoClient(object):
             raise MongoInvalidNameError("Invalid collention name {} {}".format(name, e))
         except PyMongoError as err:
             aelog.exception("Find many documents failed, {}".format(err))
-            raise HttpError(400, message=self.message[104][self.msg_zh])
+            raise HttpError(400, message=self.message[104][self.msg_zh], error=err)
         else:
             return find_data
 
@@ -215,7 +215,7 @@ class AIOMongoClient(object):
             raise MongoInvalidNameError("Invalid collention name {} {}".format(name, e))
         except PyMongoError as err:
             aelog.exception("Find many documents failed, {}".format(err))
-            raise HttpError(400, message=self.message[104][self.msg_zh])
+            raise HttpError(400, message=self.message[104][self.msg_zh], error=err)
 
     async def _update_document(self, name, query_key: dict, update_data: dict, upsert=False, update_one=True):
         """
@@ -243,7 +243,7 @@ class AIOMongoClient(object):
             raise MongoDuplicateKeyError("Duplicate key error, {}".format(e))
         except PyMongoError as err:
             aelog.exception("Update documents failed, {}".format(err))
-            raise HttpError(400, message=self.message[101][self.msg_zh])
+            raise HttpError(400, message=self.message[101][self.msg_zh], error=err)
         else:
             return {"matched_count": result.matched_count, "modified_count": result.modified_count,
                     "upserted_id": str(result.upserted_id) if result.upserted_id else None}
@@ -280,7 +280,7 @@ class AIOMongoClient(object):
             raise MongoInvalidNameError("Invalid collention name {} {}".format(name, e))
         except PyMongoError as err:
             aelog.exception("Delete documents failed, {}".format(err))
-            raise HttpError(400, message=self.message[102][self.msg_zh])
+            raise HttpError(400, message=self.message[102][self.msg_zh], error=err)
         else:
             return result.deleted_count
 
@@ -314,7 +314,7 @@ class AIOMongoClient(object):
             raise MongoInvalidNameError("Invalid collention name {} {}".format(name, e))
         except PyMongoError as err:
             aelog.exception("Aggregate documents failed, {}".format(err))
-            raise HttpError(400, message=self.message[105][self.msg_zh])
+            raise HttpError(400, message=self.message[105][self.msg_zh], error=err)
         else:
             return result
 

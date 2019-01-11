@@ -8,9 +8,9 @@
 """
 
 __all__ = ("ClientError", "ClientResponseError", "ClientConnectionError", "HttpError", "RedisClientError",
-           "RedisConnectError", "EmailError", "ConfigError", "MysqlDuplicateKeyError", "MysqlError",
-           "MysqlInvalidNameError", "FuncArgsError", "Error", "PermissionDeniedError", "QueryArgsError",
-           "MongoError", "MongoDuplicateKeyError", "MongoInvalidNameError", "CommandArgsError")
+           "RedisConnectError", "MysqlDuplicateKeyError", "MysqlError", "MysqlInvalidNameError", "FuncArgsError",
+           "Error", "PermissionDeniedError", "QueryArgsError", "MongoError", "MongoDuplicateKeyError",
+           "MongoInvalidNameError", "CommandArgsError")
 
 
 class Error(Exception):
@@ -80,9 +80,10 @@ class HttpError(Error):
     主要处理http 错误,从接口返回
     """
 
-    def __init__(self, status_code, *, message=None):
+    def __init__(self, status_code, *, message=None, error=None):
         self.status_code = status_code
         self.message = message
+        self.error = error
 
 
 class RedisClientError(Error):
