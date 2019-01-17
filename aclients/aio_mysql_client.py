@@ -328,7 +328,7 @@ class AIOMysqlClient(object):
                 aelog.exception("Find data failed, {}".format(err))
                 raise HttpError(400, message=self.message[5][self.msg_zh], error=err)
             else:
-                return [dict(val) for val in resp] if resp else None
+                return [dict(val) for val in resp] if resp else []
 
     async def _find_count(self, model, query_key: dict, or_query_key: dict):
         """
