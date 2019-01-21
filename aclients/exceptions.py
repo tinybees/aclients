@@ -113,6 +113,48 @@ class RedisConnectError(RedisClientError):
     """
 
 
+class EmailError(Error):
+    """
+    主要处理email error
+    """
+
+    def __init__(self, message=None):
+        self.message = message
+
+    def __str__(self):
+        """
+
+        Args:
+
+        Returns:
+
+        """
+        return "Error: message='{0}'".format(self.message)
+
+    __repr__ = __str__
+
+
+class ConfigError(Error):
+    """
+    主要处理config error
+    """
+
+    def __init__(self, message=None):
+        self.message = message
+
+    def __str__(self):
+        """
+
+        Args:
+
+        Returns:
+
+        """
+        return "Error: message='{0}'".format(self.message)
+
+    __repr__ = __str__
+
+
 class MysqlError(Error):
     """
     主要处理mongo错误
