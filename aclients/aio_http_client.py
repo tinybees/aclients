@@ -13,11 +13,13 @@ import aiohttp
 
 from aclients.err_msg import http_msg
 from aclients.utils import verify_message
+from .decorators import singleton
 from .exceptions import ClientConnectionError, ClientError, ClientResponseError, HttpError
 
 __all__ = ("AIOHttpClient", "AsyncResponse")
 
 
+@singleton
 class AIOHttpClient(object):
     """
     基于aiohttp的异步封装
@@ -75,7 +77,7 @@ class AIOHttpClient(object):
         @app.listener('after_server_stop')
         async def close_connection(app_, loop):
             """
-            释放redis连接池所有连接
+            释放session连接池所有连接
             Args:
 
             Returns:
