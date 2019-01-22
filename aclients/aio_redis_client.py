@@ -58,11 +58,17 @@ class AIORedisClient(object):
         """
         self.pool = None
         self.redis_db = None
+        self.host = host
+        self.port = port
+        self.dbname = dbname
+        self.passwd = passwd
+        self.pool_size = pool_size
 
         if app is not None:
-            self.init_app(app, host=host, port=port, dbname=dbname, passwd=passwd, pool_size=pool_size)
+            self.init_app(app, host=self.host, port=self.port, dbname=self.dbname, passwd=self.passwd,
+                          pool_size=self.pool_size)
 
-    def init_app(self, app, *, host="127.0.0.1", port=6379, dbname=0, passwd="", pool_size=50):
+    def init_app(self, app, *, host=None, port=None, dbname=None, passwd="", pool_size=None):
         """
         redis 非阻塞工具类
         Args:
@@ -75,11 +81,11 @@ class AIORedisClient(object):
         Returns:
 
         """
-        host = app.config.get("ACLIENTS_REDIS_HOST", None) or host
-        port = app.config.get("ACLIENTS_REDIS_PORT", None) or port
-        dbname = app.config.get("ACLIENTS_REDIS_DBNAME", None) or dbname
-        passwd = app.config.get("ACLIENTS_REDIS_PASSWD", None) or passwd
-        pool_size = app.config.get("ACLIENTS_REDIS_POOL_SIZE", None) or pool_size
+        host = host or app.config.get("ACLIENTS_REDIS_HOST", None) or self.host
+        port = port or app.config.get("ACLIENTS_REDIS_PORT", None) or self.port
+        dbname = dbname or app.config.get("ACLIENTS_REDIS_DBNAME", None) or self.dbname
+        passwd = passwd or app.config.get("ACLIENTS_REDIS_PASSWD", None) or self.passwd
+        pool_size = pool_size or app.config.get("ACLIENTS_REDIS_POOL_SIZE", None) or self.pool_size
 
         passwd = passwd if passwd is None else str(passwd)
 
@@ -109,7 +115,7 @@ class AIORedisClient(object):
             self.redis_db = None
             self.pool.disconnect()
 
-    def init_engine(self, *, host="127.0.0.1", port=6379, dbname=0, passwd="", pool_size=50):
+    def init_engine(self, *, host=None, port=None, dbname=None, passwd="", pool_size=None):
         """
         redis 非阻塞工具类
         Args:
@@ -121,6 +127,12 @@ class AIORedisClient(object):
         Returns:
 
         """
+        host = host or self.host
+        port = port or self.port
+        dbname = dbname or self.dbname
+        passwd = passwd or self.passwd
+        pool_size = pool_size or self.pool_size
+
         passwd = passwd if passwd is None else str(passwd)
         # 返回值都做了解码，应用层不需要再decode
         self.pool = aredis.ConnectionPool(host=host, port=port, db=dbname, password=passwd, decode_responses=True,

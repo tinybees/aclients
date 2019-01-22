@@ -46,15 +46,22 @@ class AIOMysqlClient(object):
         """
 
         self.aio_engine = None
-        self.message = None
+        self.username = username
+        self.passwd = passwd
+        self.host = host
+        self.port = port
+        self.dbname = dbname
+        self.pool_size = pool_size
+        self.message = kwargs.get("message", {})
+        self.use_zh = kwargs.get("use_zh", True)
         self.msg_zh = None
 
         if app is not None:
-            self.init_app(app, username=username, passwd=passwd, host=host, port=port, dbname=dbname,
-                          pool_size=pool_size, **kwargs)
+            self.init_app(app, username=self.username, passwd=self.passwd, host=self.host, port=self.port,
+                          dbname=self.dbname, pool_size=self.pool_size, **kwargs)
 
-    def init_app(self, app, *, username="root", passwd=None, host="127.0.0.1", port=3306, dbname=None,
-                 pool_size=50, **kwargs):
+    def init_app(self, app, *, username=None, passwd=None, host=None, port=None, dbname=None,
+                 pool_size=None, **kwargs):
         """
         mysql 实例初始化
         Args:
@@ -69,14 +76,14 @@ class AIOMysqlClient(object):
         Returns:
 
         """
-        username = app.config.get("ACLIENTS_MYSQL_USERNAME", None) or username
-        passwd = app.config.get("ACLIENTS_MYSQL_PASSWD", None) or passwd
-        host = app.config.get("ACLIENTS_MYSQL_HOST", None) or host
-        port = app.config.get("ACLIENTS_MYSQL_PORT", None) or port
-        dbname = app.config.get("ACLIENTS_MYSQL_DBNAME", None) or dbname
-        pool_size = app.config.get("ACLIENTS_MYSQL_POOL_SIZE", None) or pool_size
-        message = app.config.get("ACLIENTS_MYSQL_MESSAGE", None) or kwargs.get("message")
-        use_zh = app.config.get("ACLIENTS_MYSQL_MSGZH", None) or kwargs.get("use_zh", True)
+        username = username or app.config.get("ACLIENTS_MYSQL_USERNAME", None) or self.username
+        passwd = passwd or app.config.get("ACLIENTS_MYSQL_PASSWD", None) or self.passwd
+        host = host or app.config.get("ACLIENTS_MYSQL_HOST", None) or self.host
+        port = port or app.config.get("ACLIENTS_MYSQL_PORT", None) or self.port
+        dbname = dbname or app.config.get("ACLIENTS_MYSQL_DBNAME", None) or self.dbname
+        pool_size = pool_size or app.config.get("ACLIENTS_MYSQL_POOL_SIZE", None) or self.pool_size
+        message = kwargs.get("message") or app.config.get("ACLIENTS_MYSQL_MESSAGE", None) or self.message
+        use_zh = kwargs.get("use_zh") or app.config.get("ACLIENTS_MYSQL_MSGZH", None) or self.use_zh
 
         passwd = passwd if passwd is None else str(passwd)
         self.message = verify_message(mysql_msg, message)
@@ -123,8 +130,14 @@ class AIOMysqlClient(object):
         Returns:
 
         """
-        message = kwargs.get("message")
-        use_zh = kwargs.get("use_zh", True)
+        username = username or self.username
+        passwd = passwd or self.passwd
+        host = host or self.host
+        port = port or self.port
+        dbname = dbname or self.dbname
+        pool_size = pool_size or self.pool_size
+        message = kwargs.get("message") or self.message
+        use_zh = kwargs.get("use_zh") or self.use_zh
 
         passwd = passwd if passwd is None else str(passwd)
         self.message = verify_message(mysql_msg, message)
