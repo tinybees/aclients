@@ -7,6 +7,7 @@
 @time: 18-12-26 上午11:49
 """
 import asyncio
+import atexit
 
 import aelog
 import aiohttp
@@ -64,7 +65,7 @@ class AIOHttpClient(object):
         self.msg_zh = "msg_zh" if use_zh else "msg_en"
 
         @app.listener('before_server_start')
-        def open_connection(app_, loop):
+        async def open_connection(app_, loop):
             """
 
             Args:
@@ -84,6 +85,46 @@ class AIOHttpClient(object):
 
             """
             await self.session.close()
+
+    def init_session(self, *, timeout=5 * 60, verify_ssl=True, message=None, use_zh=True):
+        """
+        基于aiohttp的异步封装
+        Args:
+            timeout:request timeout
+            verify_ssl:verify ssl
+            message: 提示消息
+            use_zh: 消息提示是否使用中文，默认中文
+        Returns:
+
+        """
+        self.timeout = timeout
+        self.verify_ssl = verify_ssl
+        self.message = verify_message(http_msg, message)
+        self.msg_zh = "msg_zh" if use_zh else "msg_en"
+        loop = asyncio.get_event_loop()
+
+        async def open_connection():
+            """
+
+            Args:
+
+            Returns:
+
+            """
+            self.session = aiohttp.ClientSession()
+
+        async def close_connection():
+            """
+            释放session连接池所有连接
+            Args:
+
+            Returns:
+
+            """
+            await self.session.close()
+
+        loop.run_until_complete(open_connection())
+        atexit.register(lambda: loop.run_until_complete(close_connection()))
 
     async def _request(self, method, url, *, params=None, data=None, json=None, headers=None, timeout=None,
                        verify_ssl=None, **kwargs):

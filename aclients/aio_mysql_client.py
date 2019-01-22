@@ -6,6 +6,8 @@
 @software: PyCharm
 @time: 18-12-25 下午4:58
 """
+import asyncio
+import atexit
 from collections import MutableMapping, MutableSequence
 
 import aelog
@@ -105,6 +107,56 @@ class AIOMysqlClient(object):
             """
             self.aio_engine.close()
             await self.aio_engine.wait_closed()
+
+    def init_engine(self, *, username="root", passwd=None, host="127.0.0.1", port=3306, dbname=None,
+                    pool_size=50, **kwargs):
+        """
+        mysql 实例初始化
+        Args:
+            host:mysql host
+            port:mysql port
+            dbname: database name
+            username: mysql user
+            passwd: mysql password
+            pool_size: mysql pool size
+
+        Returns:
+
+        """
+        message = kwargs.get("message")
+        use_zh = kwargs.get("use_zh", True)
+
+        passwd = passwd if passwd is None else str(passwd)
+        self.message = verify_message(mysql_msg, message)
+        self.msg_zh = "msg_zh" if use_zh else "msg_en"
+        loop = asyncio.get_event_loop()
+
+        async def open_connection():
+            """
+
+            Args:
+
+            Returns:
+
+            """
+            # engine
+            # 增加autocommit = True可以解决个别情况下，提交了数据但是查询还是老的数据的问题
+            self.aio_engine = await create_engine(user=username, db=dbname, host=host, port=port,
+                                                  password=passwd, maxsize=pool_size, charset="utf8")
+
+        async def close_connection():
+            """
+
+            Args:
+
+            Returns:
+
+            """
+            self.aio_engine.close()
+            await self.aio_engine.wait_closed()
+
+        loop.run_until_complete(open_connection())
+        atexit.register(lambda: loop.run_until_complete(close_connection()))
 
     @staticmethod
     def _get_model_default_value(model) -> dict:

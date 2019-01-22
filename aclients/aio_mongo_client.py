@@ -6,7 +6,7 @@
 @software: PyCharm
 @time: 18-12-25 下午3:41
 """
-
+import atexit
 from collections.abc import MutableMapping, MutableSequence
 
 import aelog
@@ -80,7 +80,7 @@ class AIOMongoClient(object):
         self.msg_zh = "msg_zh" if use_zh else "msg_en"
 
         @app.listener('before_server_start')
-        def open_connection(app_, loop):
+        async def open_connection(app_, loop):
             """
 
             Args:
@@ -102,7 +102,53 @@ class AIOMongoClient(object):
                 raise MongoError("Mongo DB init failed!") from err
 
         @app.listener('after_server_stop')
-        def close_connection(app_, loop):
+        async def close_connection(app_, loop):
+            """
+
+            Args:
+
+            Returns:
+
+            """
+            self.client.close()
+
+    def init_engine(self, *, username="mongo", passwd=None, host="127.0.0.1", port=27017, dbname=None,
+                    pool_size=50, **kwargs):
+        """
+        mongo 实例初始化
+        Args:
+            host:mongo host
+            port:mongo port
+            dbname: database name
+            username: mongo user
+            passwd: mongo password
+            pool_size: mongo pool size
+        Returns:
+
+        """
+        message = kwargs.get("message")
+        use_zh = kwargs.get("use_zh", True)
+
+        passwd = passwd if passwd is None else str(passwd)
+        self.message = verify_message(mongo_msg, message)
+        self.msg_zh = "msg_zh" if use_zh else "msg_en"
+
+        # engine
+        try:
+            self.client = AsyncIOMotorClient(host, port, maxPoolSize=pool_size, username=username, password=passwd)
+            self.db = self.client.get_database(name=dbname)
+        except ConnectionFailure as e:
+            aelog.exception("Mongo connection failed host={} port={} error:{}".format(host, port, e))
+            raise MongoError("Mongo connection failed host={} port={} error:{}".format(host, port, e))
+        except InvalidName as e:
+            aelog.exception("Invalid mongo db name {} {}".format(dbname, e))
+            raise MongoInvalidNameError("Invalid mongo db name {} {}".format(dbname, e))
+        except PyMongoError as err:
+            aelog.exception("Mongo DB init failed! error: {}".format(err))
+            raise MongoError("Mongo DB init failed!") from err
+
+        @atexit.register
+        def close_connection():
             """
 
             Args:

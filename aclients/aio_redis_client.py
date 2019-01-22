@@ -6,6 +6,7 @@
 @software: PyCharm
 @time: 18-12-25 下午5:15
 """
+import atexit
 import secrets
 import ujson
 import uuid
@@ -83,7 +84,7 @@ class AIORedisClient(object):
         passwd = passwd if passwd is None else str(passwd)
 
         @app.listener('before_server_start')
-        def open_connection(app_, loop):
+        async def open_connection(app_, loop):
             """
 
             Args:
@@ -97,7 +98,37 @@ class AIORedisClient(object):
             self.redis_db = aredis.StrictRedis(connection_pool=self.pool, decode_responses=True)
 
         @app.listener('after_server_stop')
-        def close_connection(app_, loop):
+        async def close_connection(app_, loop):
+            """
+            释放redis连接池所有连接
+            Args:
+
+            Returns:
+
+            """
+            self.redis_db = None
+            self.pool.disconnect()
+
+    def init_engine(self, *, host="127.0.0.1", port=6379, dbname=0, passwd="", pool_size=50):
+        """
+        redis 非阻塞工具类
+        Args:
+            host:redis host
+            port:redis port
+            dbname: database name
+            passwd: redis password
+            pool_size: redis pool size
+        Returns:
+
+        """
+        passwd = passwd if passwd is None else str(passwd)
+        # 返回值都做了解码，应用层不需要再decode
+        self.pool = aredis.ConnectionPool(host=host, port=port, db=dbname, password=passwd, decode_responses=True,
+                                          max_connections=pool_size)
+        self.redis_db = aredis.StrictRedis(connection_pool=self.pool, decode_responses=True)
+
+        @atexit.register
+        def close_connection():
             """
             释放redis连接池所有连接
             Args:
