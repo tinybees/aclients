@@ -39,7 +39,7 @@ class AIOHttpClient(object):
         self.session = None
         self.timeout = timeout
         self.verify_ssl = verify_ssl
-        self.message = message
+        self.message = message or {}
         self.use_zh = use_zh
         self.msg_zh = None
 
@@ -101,9 +101,8 @@ class AIOHttpClient(object):
         """
         self.timeout = timeout or self.timeout
         self.verify_ssl = verify_ssl or self.verify_ssl
-        message = message or self.message
         use_zh = use_zh or self.use_zh
-        self.message = verify_message(http_msg, message)
+        self.message = verify_message(http_msg, message or self.message)
         self.msg_zh = "msg_zh" if use_zh else "msg_en"
         loop = asyncio.get_event_loop()
 
