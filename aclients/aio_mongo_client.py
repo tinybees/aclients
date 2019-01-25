@@ -17,9 +17,9 @@ from motor.motor_asyncio import AsyncIOMotorClient
 # noinspection PyPackageRequirements
 from pymongo.errors import (ConnectionFailure, DuplicateKeyError, InvalidName, PyMongoError)
 
-from aclients.utils import verify_message
 from .err_msg import mongo_msg
 from .exceptions import FuncArgsError, HttpError, MongoDuplicateKeyError, MongoError, MongoInvalidNameError
+from .utils import verify_message
 
 __all__ = ("AIOMongoClient",)
 

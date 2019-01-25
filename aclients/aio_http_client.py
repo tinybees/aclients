@@ -12,10 +12,10 @@ import atexit
 import aelog
 import aiohttp
 
-from aclients.err_msg import http_msg
-from aclients.utils import verify_message
 from .decorators import singleton
+from .err_msg import http_msg
 from .exceptions import ClientConnectionError, ClientError, ClientResponseError, HttpError
+from .utils import verify_message
 
 __all__ = ("AIOHttpClient", "AsyncResponse")
 

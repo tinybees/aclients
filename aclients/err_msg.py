@@ -46,4 +46,10 @@ http_msg = {
     # request 从200到300
     200: {"msg_code": 200, "msg_zh": "获取API响应结果失败.", "msg_en": "Failed to get API response result.",
           "description": "async request 获取API响应结果失败时的提示"},
+    # schema valication message
+    201: {"msg_code": 201, "msg_zh": "请求body校验错误,请检查.", "msg_en": "Request body validation error, please check!",
+          "description": "marmallow校验body错误时的提示"},
+    202: {"msg_code": 202, "msg_zh": "请求body校验未知错误,请检查.",
+          "msg_en": "Request body validation unknow error, please check!",
+          "description": "marmallow校验body未知错误时的提示"},
 }

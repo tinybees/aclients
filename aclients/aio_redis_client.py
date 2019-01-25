@@ -16,8 +16,8 @@ import aelog
 import aredis
 from aredis import RedisError
 
-from aclients.exceptions import RedisClientError
-from aclients.utils import ignore_error
+from .exceptions import RedisClientError
+from .utils import ignore_error
 
 __all__ = ("Session", "AIORedisClient")
 

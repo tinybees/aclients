@@ -19,9 +19,9 @@ from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.sql import delete, desc, func, insert, or_, select, update
 
-from aclients.utils import verify_message
 from .err_msg import mysql_msg
 from .exceptions import FuncArgsError, HttpError, MysqlDuplicateKeyError, MysqlError, QueryArgsError
+from .utils import verify_message
 
 __all__ = ("AIOMysqlClient",)
 
