@@ -6,17 +6,27 @@
 @software: PyCharm
 @time: 18-12-25 下午2:08
 """
+from sanic.exceptions import SanicException
 
 __all__ = ("ClientError", "ClientResponseError", "ClientConnectionError", "HttpError", "RedisClientError",
            "RedisConnectError", "MysqlDuplicateKeyError", "MysqlError", "MysqlInvalidNameError", "FuncArgsError",
            "Error", "PermissionDeniedError", "QueryArgsError", "MongoError", "MongoDuplicateKeyError",
-           "MongoInvalidNameError", "CommandArgsError")
+           "MongoInvalidNameError", "CommandArgsError", "EmailError", "ConfigError")
 
 
 class Error(Exception):
     """
     异常基类
     """
+
+    def __init__(self, message=None):
+        self.message = message
+
+    def __str__(self):
+        return "Error: message='{}'".format(self.message)
+
+    def __repr__(self):
+        return "<{} '{}'>".format(self.__class__.__name__, self.message)
 
 
 class ClientError(Error):
@@ -27,18 +37,13 @@ class ClientError(Error):
     def __init__(self, url, *, message=None):
         self.url = url
         self.message = message
+        super().__init__(message)
 
     def __str__(self):
-        """
+        return "Error: url='{}', message='{}'".format(self.url, self.message)
 
-        Args:
-
-        Returns:
-
-        """
-        return "Error: url='{0}', message='{1}'".format(self.url, self.message)
-
-    __repr__ = __str__
+    def __repr__(self):
+        return "<{} '{}, {}'>".format(self.__class__.__name__, self.url, self.message)
 
 
 class ClientResponseError(ClientError):
@@ -52,30 +57,23 @@ class ClientResponseError(ClientError):
         self.message = message
         self.headers = headers
         self.body = body
-        super().__init__(url=self.url, message=self.message)
+        super().__init__(self.url, message=self.message)
 
     def __str__(self):
-        """
+        return "Error: code={}, url='{}', message='{}', body='{}'".format(
+            self.status_code, self.url, self.message, self.body)
 
-        Args:
-
-        Returns:
-
-        """
-        return "Error: code={0}, url={1}, message='{2}', body={3}".format(self.status_code, self.url, self.message,
-                                                                          self.body)
+    def __repr__(self):
+        return "<{} '{}, {}, {}'>".format(self.__class__.__name__, self.status_code, self.url, self.message)
 
 
 class ClientConnectionError(ClientError):
     """连接异常"""
 
-    def __init__(self, url, *, message=None):
-        self.url = url
-        self.message = message
-        super().__init__(url=self.url, message=self.message)
+    pass
 
 
-class HttpError(Error):
+class HttpError(Error, SanicException):
     """
     主要处理http 错误,从接口返回
     """
@@ -84,6 +82,13 @@ class HttpError(Error):
         self.status_code = status_code
         self.message = message
         self.error = error
+        super(SanicException, self).__init__(message, status_code)
+
+    def __str__(self):
+        return "{}, '{}':'{}'".format(self.status_code, self.message, self.message or self.error)
+
+    def __repr__(self):
+        return "<{} '{}: {}'>".format(self.__class__.__name__, self.status_code, self.error or self.message)
 
 
 class RedisClientError(Error):
@@ -91,26 +96,14 @@ class RedisClientError(Error):
     主要处理redis的error
     """
 
-    def __init__(self, message=None):
-        self.message = message
-
-    def __str__(self):
-        """
-
-        Args:
-
-        Returns:
-
-        """
-        return "Error: message='{0}'".format(self.message)
-
-    __repr__ = __str__
+    pass
 
 
 class RedisConnectError(RedisClientError):
     """
     主要处理redis的connect error
     """
+    pass
 
 
 class EmailError(Error):
@@ -118,20 +111,7 @@ class EmailError(Error):
     主要处理email error
     """
 
-    def __init__(self, message=None):
-        self.message = message
-
-    def __str__(self):
-        """
-
-        Args:
-
-        Returns:
-
-        """
-        return "Error: message='{0}'".format(self.message)
-
-    __repr__ = __str__
+    pass
 
 
 class ConfigError(Error):
@@ -139,20 +119,7 @@ class ConfigError(Error):
     主要处理config error
     """
 
-    def __init__(self, message=None):
-        self.message = message
-
-    def __str__(self):
-        """
-
-        Args:
-
-        Returns:
-
-        """
-        return "Error: message='{0}'".format(self.message)
-
-    __repr__ = __str__
+    pass
 
 
 class MysqlError(Error):
@@ -160,20 +127,7 @@ class MysqlError(Error):
     主要处理mongo错误
     """
 
-    def __init__(self, message=None):
-        self.message = message
-
-    def __str__(self):
-        """
-
-        Args:
-
-        Returns:
-
-        """
-        return "Error: message='{0}'".format(self.message)
-
-    __repr__ = __str__
+    pass
 
 
 class MysqlDuplicateKeyError(MysqlError):
@@ -181,20 +135,7 @@ class MysqlDuplicateKeyError(MysqlError):
     处理键重复引发的error
     """
 
-    def __init__(self, message=None):
-        self.message = message
-
-    def __str__(self):
-        """
-
-        Args:
-
-        Returns:
-
-        """
-        return "Error: message='{0}'".format(self.message)
-
-    __repr__ = __str__
+    pass
 
 
 class MysqlInvalidNameError(MysqlError):
@@ -202,20 +143,7 @@ class MysqlInvalidNameError(MysqlError):
     处理名称错误引发的error
     """
 
-    def __init__(self, message=None):
-        self.message = message
-
-    def __str__(self):
-        """
-
-        Args:
-
-        Returns:
-
-        """
-        return "Error: message='{0}'".format(self.message)
-
-    __repr__ = __str__
+    pass
 
 
 class MongoError(Error):
@@ -223,20 +151,7 @@ class MongoError(Error):
     主要处理mongo错误
     """
 
-    def __init__(self, message=None):
-        self.message = message
-
-    def __str__(self):
-        """
-
-        Args:
-
-        Returns:
-
-        """
-        return "Error: message='{0}'".format(self.message)
-
-    __repr__ = __str__
+    pass
 
 
 class MongoDuplicateKeyError(MongoError):
@@ -244,20 +159,7 @@ class MongoDuplicateKeyError(MongoError):
     处理键重复引发的error
     """
 
-    def __init__(self, message=None):
-        self.message = message
-
-    def __str__(self):
-        """
-
-        Args:
-
-        Returns:
-
-        """
-        return "Error: message='{0}'".format(self.message)
-
-    __repr__ = __str__
+    pass
 
 
 class MongoInvalidNameError(MongoError):
@@ -265,20 +167,7 @@ class MongoInvalidNameError(MongoError):
     处理名称错误引发的error
     """
 
-    def __init__(self, message=None):
-        self.message = message
-
-    def __str__(self):
-        """
-
-        Args:
-
-        Returns:
-
-        """
-        return "Error: message='{0}'".format(self.message)
-
-    __repr__ = __str__
+    pass
 
 
 class FuncArgsError(Error):
@@ -286,20 +175,7 @@ class FuncArgsError(Error):
     处理函数参数不匹配引发的error
     """
 
-    def __init__(self, message=None):
-        self.message = message
-
-    def __str__(self):
-        """
-
-        Args:
-
-        Returns:
-
-        """
-        return "Error: message='{0}'".format(self.message)
-
-    __repr__ = __str__
+    pass
 
 
 class PermissionDeniedError(Error):
@@ -307,20 +183,7 @@ class PermissionDeniedError(Error):
     处理权限被拒绝时的错误
     """
 
-    def __init__(self, message=None):
-        self.message = message
-
-    def __str__(self):
-        """
-
-        Args:
-
-        Returns:
-
-        """
-        return "Error: message='{0}'".format(self.message)
-
-    __repr__ = __str__
+    pass
 
 
 class QueryArgsError(Error):
@@ -328,20 +191,7 @@ class QueryArgsError(Error):
     处理salalemy 拼接query错误
     """
 
-    def __init__(self, message=None):
-        self.message = message
-
-    def __str__(self):
-        """
-
-        Args:
-
-        Returns:
-
-        """
-        return "Error: message='{0}'".format(self.message)
-
-    __repr__ = __str__
+    pass
 
 
 class CommandArgsError(Error):
@@ -349,17 +199,4 @@ class CommandArgsError(Error):
     处理执行命令时，命令失败错误
     """
 
-    def __init__(self, message=None):
-        self.message = message
-
-    def __str__(self):
-        """
-
-        Args:
-
-        Returns:
-
-        """
-        return "Error: message='{0}'".format(self.message)
-
-    __repr__ = __str__
+    pass

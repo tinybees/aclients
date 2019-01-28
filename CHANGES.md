@@ -1,5 +1,11 @@
 ## aclients Changelog
 
+###[1.0.0b12] - 2019-1-28
+
+#### Changed 
+- 删除http message 中不用的消息
+- 优化exceptions的实现方式
+
 ###[1.0.0b11] - 2019-1-25
 
 #### Changed 
