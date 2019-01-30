@@ -491,12 +491,16 @@ class AIOMysqlClient(object):
                     if operate in maps:
                         query = maps[operate](field_name, value)
         # or 查询 {"key": {"gt": 3, "lt": 9}}
-        for field_name, val in or_query_key.items():
+        for field_name, or_value in or_query_key.items():
             field_name = getattr(model, field_name) if not isinstance(field_name, InstrumentedAttribute) else field_name
             or_args = []
-            for operate, value in val.items():
+            for operate, sub_or_value in or_value.items():
                 if operate in or_maps:
-                    or_args.append(or_maps[operate](field_name, value))
+                    if not isinstance(sub_or_value, MutableSequence):
+                        or_args.append(or_maps[operate](field_name, sub_or_value))
+                    else:
+                        for val in sub_or_value:
+                            or_args.append(or_maps[operate](field_name, val))
             else:
                 query = or_query(or_args)
         return query
@@ -581,8 +585,8 @@ class AIOMysqlClient(object):
         插入数据
         Args:
             model: model
-            query_key: 查询表的过滤条件
-            or_query_key: 或查询model的过滤条件
+            query_key: 查询表的过滤条件, {"key": {"gt": 3, "lt": 9}}
+            or_query_key: 或查询model的过滤条件,{"key": {"gt": 3, "lt": 9}},{"key": {"eq": [3, 8]}}
             limit: 限制返回的表的条数
             page: 从查询结果中调过指定数量的行
             order: 排序条件

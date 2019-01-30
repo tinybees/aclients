@@ -1,5 +1,10 @@
 ## aclients Changelog
 
+###[1.0.0b13] - 2019-1-28
+
+#### Changed 
+- 优化MySQL或查询支持列表
+
 ###[1.0.0b12] - 2019-1-28
 
 #### Changed 
