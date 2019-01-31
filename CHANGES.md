@@ -1,5 +1,10 @@
 ## aclients Changelog
 
+###[1.0.0b15] - 2019-1-31
+
+#### Changed 
+- 修改schema装饰器实现
+
 ###[1.0.0b14] - 2019-1-31
 
 #### Added 

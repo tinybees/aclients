@@ -9,7 +9,7 @@
 from functools import wraps
 
 import aelog
-import marshmallow
+from marshmallow import EXCLUDE, Schema, ValidationError
 from sanic.request import Request
 
 from .err_msg import schema_msg
@@ -74,7 +74,7 @@ def schema_validate(schema_obj, required: (tuple, list) = tuple(), is_extends=Tr
     Returns:
     """
 
-    if not issubclass(schema_obj, marshmallow.Schema):
+    if not issubclass(schema_obj, Schema):
         raise FuncArgsError(message="schema_obj type error!")
     if not isinstance(required, (tuple, list)):
         raise FuncArgsError(message="required type error!")
@@ -99,7 +99,7 @@ def schema_validate(schema_obj, required: (tuple, list) = tuple(), is_extends=Tr
             schema_message = getattr(schema_validate, "message", None)
 
             request = args[0] if isinstance(args[0], Request) else args[1]
-            new_schema_obj = schema_obj(unknown="EXCLUDE")
+            new_schema_obj = schema_obj(unknown=EXCLUDE)
             if required:
                 for key, val in new_schema_obj.fields.items():
                     if key in required:  # 反序列化期间，把特别需要的字段标记为required
@@ -108,11 +108,11 @@ def schema_validate(schema_obj, required: (tuple, list) = tuple(), is_extends=Tr
                     elif not is_extends:
                         setattr(new_schema_obj.fields[key], "required", False)
             try:
-                valid_data = new_schema_obj.load(request.json, unknown="EXCLUDE")
+                valid_data = new_schema_obj.load(request.json, unknown=EXCLUDE)
                 # 把load后不需要的字段过滤掉，主要用于不允许修改的字段load后过滤掉
                 for val in excluded:
                     valid_data.pop(val, None)
-            except marshmallow.ValidationError as err:
+            except ValidationError as err:
                 # 异常退出
                 aelog.exception('Request body validation error, please check! {} {} error={}'.format(
                     request.method, request.path, err.messages))
