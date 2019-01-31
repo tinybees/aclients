@@ -16,7 +16,7 @@ from .err_msg import schema_msg
 from .exceptions import FuncArgsError, HttpError
 from .utils import verify_message
 
-__all__ = ("singleton", "schema_validate")
+__all__ = ("singleton", "schema_validate", "Singleton")
 
 
 def singleton(cls):
@@ -37,6 +37,27 @@ def singleton(cls):
         return instances[cls_name]
 
     return _singleton
+
+
+class _Singleton(type):
+    """
+    singleton for class
+    """
+
+    def __init__(cls, *args, **kwargs):
+        cls.__instance = None
+        super().__init__(*args, **kwargs)
+
+    def __call__(cls, *args, **kwargs):
+        if cls.__instance is None:
+            cls.__instance = super().__call__(*args, **kwargs)
+            return cls.__instance
+        else:
+            return cls.__instance
+
+
+class Singleton(metaclass=_Singleton):
+    pass
 
 
 def schema_validate(schema_obj, required: (tuple, list) = tuple(), is_extends=True, excluded: (tuple, list) = tuple(),

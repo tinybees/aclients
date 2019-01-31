@@ -12,7 +12,7 @@ import atexit
 import aelog
 import aiohttp
 
-from .decorators import singleton
+from .decorators import Singleton
 from .err_msg import http_msg
 from .exceptions import ClientConnectionError, ClientError, ClientResponseError, HttpError
 from .utils import verify_message
@@ -20,8 +20,7 @@ from .utils import verify_message
 __all__ = ("AIOHttpClient", "AsyncResponse")
 
 
-@singleton
-class AIOHttpClient(object):
+class AIOHttpClient(Singleton):
     """
     基于aiohttp的异步封装
     """

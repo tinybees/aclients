@@ -1,5 +1,13 @@
 ## aclients Changelog
 
+###[1.0.0b14] - 2019-1-31
+
+#### Added 
+- 增加元类单例实现
+
+#### Changed 
+- 修改httpclient为元类单例的子类
+
 ###[1.0.0b13] - 2019-1-28
 
 #### Changed 
