@@ -1,5 +1,12 @@
 ## aclients Changelog
 
+###[1.0.0b16] - 2019-3-16
+
+#### Changed 
+- 优化insert document中的ID处理逻辑 
+- 优化update data处理逻辑 
+- 优化query key处理逻辑，可以直接使用in、like等查询
+
 ###[1.0.0b15] - 2019-1-31
 
 #### Changed 
