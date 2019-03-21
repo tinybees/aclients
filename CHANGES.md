@@ -1,5 +1,15 @@
 ## aclients Changelog
 
+###[1.0.0b18] - 2019-3-21
+
+#### Added 
+- redis的session中增加角色ID
+- redis的session中增加静态权限ID
+- redis的session中增加动态权限ID
+
+#### Changed 
+- redis的session中user_id更改为account_id
+
 ###[1.0.0b17] - 2019-3-21
 
 #### Added 

@@ -31,11 +31,14 @@ class Session(object):
 
     """
 
-    def __init__(self, user_id, *, org_id=None, permission_id=None, **kwargs):
-        self.user_id = user_id
-        self.session_id = secrets.token_urlsafe()
-        self.org_id = org_id or uuid.uuid4().hex
-        self.permission_id = permission_id or uuid.uuid4().hex
+    def __init__(self, account_id, *, org_id=None, role_id=None, permission_id=None, **kwargs):
+        self.account_id = account_id  # 账户ID
+        self.session_id = secrets.token_urlsafe()  # session ID
+        self.org_id = org_id or uuid.uuid4().hex  # 账户的组织结构在redis中的ID
+        self.role_id = role_id or uuid.uuid4().hex  # 账户的角色在redis中的ID
+        self.permission_id = permission_id or uuid.uuid4().hex  # 账户的权限在redis中的ID
+        self.static_permission_id = uuid.uuid4().hex  # 账户的静态权限在redis中的ID
+        self.dynamic_permission_id = uuid.uuid4().hex  # 账户的动态权限在redis中的ID
         for k, v in kwargs.items():
             setattr(self, k, v)
 
@@ -239,7 +242,7 @@ class AIORedisClient(object):
             if not cls_flag:
                 return session_data
             else:
-                return Session(user_id=session_data.pop('user_id'), session_id=session_data["session_id"],
+                return Session(account_id=session_data.pop('account_id'), session_id=session_data["session_id"],
                                org_id=session_data["org_id"], permission_id=session_data["permission_id"],
                                **session_data)
 
