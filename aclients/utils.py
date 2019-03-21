@@ -6,12 +6,20 @@
 @software: PyCharm
 @time: 18-12-26 下午3:32
 """
+import asyncio
+import multiprocessing
 from collections import MutableMapping, MutableSequence
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 
 import aelog
 
-__all__ = ("ignore_error", "verify_message")
+from aclients.exceptions import Error, FuncArgsError
+
+__all__ = ("ignore_error", "verify_message", "wrap_async_func")
+
+# 执行任务的线程池
+pool = ThreadPoolExecutor(multiprocessing.cpu_count() * 10 + multiprocessing.cpu_count())
 
 
 @contextmanager
@@ -47,3 +55,23 @@ def verify_message(src_message: dict, message: list or dict):
             if set(msg.keys()).intersection(required_field) == required_field and msg["msg_code"] in src_message:
                 src_message[msg["msg_code"]].update(msg)
     return src_message
+
+
+async def wrap_async_func(func, *args, **kwargs):
+    """
+    包装同步阻塞请求为异步非阻塞
+    Args:
+        func: 实际请求的函数名或者方法名
+        args: 函数参数
+        kwargs: 函数参数
+    Returns:
+        返回执行后的结果
+    """
+    try:
+        result = await asyncio.wrap_future(pool.submit(func, *args, **kwargs))
+    except TypeError as e:
+        raise FuncArgsError("Args error: {}".format(e))
+    except Exception as e:
+        raise Error("Error: {}".format(e))
+    else:
+        return result
