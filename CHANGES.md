@@ -1,5 +1,10 @@
 ## aclients Changelog
 
+###[1.0.0b18] - 2019-3-22
+
+#### Changed 
+- 修改mongo查询中的错误
+
 ###[1.0.0b18] - 2019-3-21
 
 #### Added 

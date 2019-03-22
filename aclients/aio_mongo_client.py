@@ -479,10 +479,10 @@ class AIOMongoClient(object):
             for key, val in query_key.items():
                 if isinstance(val, MutableMapping):
                     if key != "id":
-                        query_key[key] = {key if "".startswith("$") else f"${key}": val for key, val in val.items()}
+                        query_key[key] = {key if key.startswith("$") else f"${key}": val for key, val in val.items()}
                     else:
                         query_key["_id"] = {
-                            key if "".startswith("$") else f"${key}": [ObjectId(val) for val in val]
+                            key if key.startswith("$") else f"${key}": [ObjectId(val) for val in val]
                             if "in" in key else val for key, val in query_key.pop(key).items()}
                 else:
                     if key == "id":
