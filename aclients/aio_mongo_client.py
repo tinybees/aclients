@@ -423,6 +423,7 @@ class AIOMongoClient(object):
                 document["_id"] = ObjectId(document.pop("id"))
             except BSONError as e:
                 raise FuncArgsError(str(e))
+        return document
 
     async def find_document(self, name: str, query_key: dict = None, filter_key: dict = None):
         """
