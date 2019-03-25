@@ -1,5 +1,10 @@
 ## aclients Changelog
 
+###[1.0.0b21] - 2019-3-25
+
+#### Changed 
+- 修改update data中设置前缀的错误
+
 ###[1.0.0b20] - 2019-3-22
 
 #### Changed 
