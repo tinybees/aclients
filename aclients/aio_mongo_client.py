@@ -524,7 +524,7 @@ class AIOMongoClient(object):
         else:
             operator, doc = update_data.popitem()
             pre_flag = operator.startswith("$")
-            update_data = {"$set" if not pre_flag else operator: update_data if not pre_flag else doc}
+            update_data = {"$set" if not pre_flag else operator: {operator: doc} if not pre_flag else doc}
         return update_data
 
     async def update_document(self, name: str, query_key: dict, update_data: dict, upsert: bool = False):
