@@ -10,3 +10,4 @@ aiodns
 motor>=1.2.2
 ujson
 marshmallow>=3.0.0rc3
+PyYAML>=3.13

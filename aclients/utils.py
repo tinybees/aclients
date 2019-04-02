@@ -8,15 +8,23 @@
 """
 import asyncio
 import multiprocessing
+import sys
 from collections import MutableMapping, MutableSequence
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 
 import aelog
+import yaml
+from bson import ObjectId
 
 from aclients.exceptions import Error, FuncArgsError
 
-__all__ = ("ignore_error", "verify_message", "wrap_async_func")
+try:
+    from yaml import CLoader as Loader
+except ImportError:
+    from yaml import Loader
+
+__all__ = ("ignore_error", "verify_message", "wrap_async_func", "analysis_yaml", "gen_class_name", "objectid")
 
 # 执行任务的线程池
 pool = ThreadPoolExecutor(multiprocessing.cpu_count() * 10 + multiprocessing.cpu_count())
@@ -75,3 +83,42 @@ async def wrap_async_func(func, *args, **kwargs):
         raise Error("Error: {}".format(e))
     else:
         return result
+
+
+def gen_class_name(underline_name):
+    """
+    由下划线的名称变为驼峰的名称
+    Args:
+        underline_name
+    Returns:
+
+    """
+    return "".join([name.capitalize() for name in underline_name.split("_")])
+
+
+def analysis_yaml(full_conf_path):
+    """
+    解析yaml文件
+    Args:
+        full_conf_path: yaml配置文件路径
+    Returns:
+
+    """
+    with open(full_conf_path, 'rt', encoding="utf8") as f:
+        try:
+            conf = yaml.load(f, Loader=Loader)
+        except yaml.YAMLError as e:
+            print("Yaml配置文件出错, {}".format(e))
+            sys.exit()
+    return conf
+
+
+def objectid():
+    """
+
+    Args:
+
+    Returns:
+
+    """
+    return str(ObjectId())

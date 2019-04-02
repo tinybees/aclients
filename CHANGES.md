@@ -1,5 +1,13 @@
 ## aclients Changelog
 
+###[1.0.0b23] - 2019-4-2
+
+#### Added 
+- 工具类中增加由对象名生成类名的功能
+- 工具类中增加解析yaml文件的功能
+- 工具类中增加返回objectid的功能
+- 增加基于pymysql的简单TinyMySQL功能，用于简单操作MySQL的时候使用 
+
 ###[1.0.0b22] - 2019-3-25
 
 #### Changed 
