@@ -57,12 +57,12 @@ class TinyMysql(object):
                 self.conn_pool[name] = get_connection()
             return self.conn_pool[name]
 
-    def execute_many(self, sql, insert_data):
+    def execute_many(self, sql, args_data):
         """
             批量插入数据
         Args:
             sql: 插入的SQL语句
-            insert_data: 批量插入的数据，为一个包含元祖的列表
+            args_data: 批量插入的数据，为一个包含元祖的列表
         Returns:
         INSERT INTO traffic_100 (IMEI,lbs_dict_id,app_key) VALUES(%s,%s,%s)
         [('868403022323171', None, 'EB23B21E6E1D930E850E7267E3F00095'),
@@ -73,7 +73,7 @@ class TinyMysql(object):
         count = None
         try:
             with self.conn.cursor() as cursor:
-                count = cursor.executemany(sql, insert_data)
+                count = cursor.executemany(sql, args_data)
         except pymysql.Error as e:
             self.conn.rollback()
             aelog.exception(e)
@@ -84,12 +84,12 @@ class TinyMysql(object):
             self.conn.commit()
         return count
 
-    def execute(self, sql, insert_data):
+    def execute(self, sql, args_data):
         """
             执行单条记录，更新、插入或者删除
         Args:
             sql: 插入的SQL语句
-            insert_data: 批量插入的数据，为一个包含元祖的列表
+            args_data: 批量插入的数据，为一个包含元祖的列表
         Returns:
         INSERT INTO traffic_100 (IMEI,lbs_dict_id,app_key) VALUES(%s,%s,%s)
         ('868403022323171', None, 'EB23B21E6E1D930E850E7267E3F00095')
@@ -99,7 +99,7 @@ class TinyMysql(object):
         count = None
         try:
             with self.conn.cursor() as cursor:
-                count = cursor.execute(sql, insert_data)
+                count = cursor.execute(sql, args_data)
         except pymysql.Error as e:
             self.conn.rollback()
             aelog.exception(e)
@@ -110,28 +110,30 @@ class TinyMysql(object):
             self.conn.commit()
         return count
 
-    def find_one(self, sql):
+    def find_one(self, sql, args=None):
         """
             查询单条记录
         Args:
             sql: sql 语句
+            args: 查询参数
         Returns:
             返回单条记录的返回值
         """
 
         try:
             with self.conn.cursor() as cursor:
-                cursor.execute(sql)
+                cursor.execute(sql, args)
         except pymysql.Error as e:
             aelog.exception(e)
         else:
             return cursor.fetchone()
 
-    def find_data(self, sql, size=None):
+    def find_data(self, sql, args=None, size=None):
         """
             查询指定行数的数据
         Args:
             sql: sql 语句
+            args: 查询参数
             size: 返回记录的条数
         Returns:
             返回包含指定行数数据的列表,或者所有行数数据的列表
@@ -139,7 +141,7 @@ class TinyMysql(object):
 
         try:
             with self.conn.cursor() as cursor:
-                cursor.execute(sql)
+                cursor.execute(sql, args)
         except pymysql.Error as e:
             aelog.exception(e)
         else:

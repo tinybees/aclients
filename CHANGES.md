@@ -1,5 +1,10 @@
 ## aclients Changelog
 
+###[1.0.0b25] - 2019-4-16
+
+#### Changed 
+- 修改TinyMySQL中execute的参数，修改find中的args参数名称
+
 ###[1.0.0b24] - 2019-4-2
 
 #### Added 
