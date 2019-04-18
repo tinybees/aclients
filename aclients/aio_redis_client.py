@@ -39,6 +39,8 @@ class Session(object):
         self.permission_id = permission_id or uuid.uuid4().hex  # 账户的权限在redis中的ID
         self.static_permission_id = uuid.uuid4().hex  # 账户的静态权限在redis中的ID
         self.dynamic_permission_id = uuid.uuid4().hex  # 账户的动态权限在redis中的ID
+        self.page_id = uuid.uuid4().hex  # 账户的页面权限在redis中的ID
+        self.page_menu_id = uuid.uuid4().hex  # 账户的页面菜单权限在redis中的ID
         for k, v in kwargs.items():
             setattr(self, k, v)
 

@@ -1,5 +1,10 @@
 ## aclients Changelog
 
+###[1.0.0b26] - 2019-4-18
+
+#### Changed 
+- 修改Session中增加page_id和page_menu_id两个用于账户的页面权限管理
+
 ###[1.0.0b25] - 2019-4-16
 
 #### Changed 
