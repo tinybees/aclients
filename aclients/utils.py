@@ -13,7 +13,6 @@ from collections import MutableMapping, MutableSequence
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 
-import aelog
 import yaml
 from bson import ObjectId
 
@@ -39,10 +38,11 @@ def ignore_error(error=Exception):
     Returns:
 
     """
+    # noinspection PyBroadException
     try:
         yield
-    except error as e:
-        aelog.warning(e)
+    except error:
+        pass
 
 
 def verify_message(src_message: dict, message: list or dict):

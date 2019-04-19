@@ -156,16 +156,26 @@ class AIORedisClient(object):
             self.redis_db = None
             self.pool.disconnect()
 
-    async def save_session(self, session: Session, ex=EXPIRED):
+    async def save_session(self, session: Session, dump_responses=False, ex=EXPIRED):
         """
         利用hash map保存session
         Args:
             session: Session 实例
+            dump_responses: 是否对每个键值进行dump
             ex: 过期时间，单位秒
         Returns:
 
         """
-        session_data = {key: val if isinstance(val, str) else ujson.dumps(val) for key, val in vars(session).items()}
+        session_data = dict(vars(session))
+        # 是否对每个键值进行dump
+        if dump_responses:
+            hash_data = {}
+            for hash_key, hash_val in session_data.items():
+                if not isinstance(hash_val, str):
+                    with ignore_error():
+                        hash_val = ujson.dumps(hash_val)
+                hash_data[hash_key] = hash_val
+            session_data = hash_data
 
         try:
             if not await self.redis_db.hmset(session_data["session_id"], session_data):
@@ -198,16 +208,26 @@ class AIORedisClient(object):
             aelog.exception("delete session error: {}, {}".format(session_id, e))
             raise RedisClientError(str(e))
 
-    async def update_session(self, session: Session, ex=EXPIRED):
+    async def update_session(self, session: Session, dump_responses=False, ex=EXPIRED):
         """
         利用hash map更新session
         Args:
             session: Session实例
             ex: 过期时间，单位秒
+            dump_responses: 是否对每个键值进行dump
         Returns:
 
         """
-        session_data = {key: val if isinstance(val, str) else ujson.dumps(val) for key, val in vars(session).items()}
+        session_data = dict(vars(session))
+        # 是否对每个键值进行dump
+        if dump_responses:
+            hash_data = {}
+            for hash_key, hash_val in session_data.items():
+                if not isinstance(hash_val, str):
+                    with ignore_error():
+                        hash_val = ujson.dumps(hash_val)
+                hash_data[hash_key] = hash_val
+            session_data = hash_data
 
         try:
             if not await self.redis_db.hmset(session_data["session_id"], session_data):
@@ -218,13 +238,14 @@ class AIORedisClient(object):
             aelog.exception("update session error: {}, {}".format(session_data["session_id"], e))
             raise RedisClientError(str(e))
 
-    async def get_session(self, session_id, ex=EXPIRED, cls_flag=False) -> Session:
+    async def get_session(self, session_id, ex=EXPIRED, cls_flag=True, load_responses=False) -> Session:
         """
         获取session
         Args:
             session_id: session id
             ex: 过期时间，单位秒
             cls_flag: 是否返回session的类实例
+            load_responses: 结果的键值是否进行load
         Returns:
 
         """
@@ -240,13 +261,21 @@ class AIORedisClient(object):
             aelog.exception("get session error: {}, {}".format(session_id, e))
             raise RedisClientError(e)
         else:
-            session_data = {key: val if isinstance(val, str) else ujson.loads(val) for key, val in session_data.items()}
-            if not cls_flag:
-                return session_data
-            else:
+            # 返回的键值对是否做load
+            if load_responses:
+                hash_data = {}
+                for hash_key, hash_val in session_data.items():
+                    with ignore_error():
+                        hash_val = ujson.loads(hash_val)
+                    hash_data[hash_key] = hash_val
+                session_data = hash_data
+
+            if cls_flag:
                 return Session(account_id=session_data.pop('account_id'), session_id=session_data["session_id"],
                                org_id=session_data["org_id"], permission_id=session_data["permission_id"],
                                **session_data)
+            else:
+                return session_data
 
     async def verify(self, session_id):
         """
@@ -265,18 +294,29 @@ class AIORedisClient(object):
                 raise RedisClientError("invalid session_id, session_id={}".format(session_id))
             return session
 
-    async def save_update_hash_data(self, name, hash_data: dict, ex=EXPIRED):
+    async def save_update_hash_data(self, name, hash_data: dict, ex=EXPIRED, dump_responses=False):
         """
         获取hash对象field_name对应的值
         Args:
             name: redis hash key的名称
             hash_data: 获取的hash对象中属性的名称
             ex: 过期时间，单位秒
+            dump_responses: 是否对每个键值进行dump
         Returns:
             反序列化对象
         """
         if not isinstance(hash_data, MutableMapping):
             raise ValueError("hash data error, must be MutableMapping.")
+        # 是否对每个键值进行dump
+        if dump_responses:
+            rs_data = {}
+            for hash_key, hash_val in hash_data.items():
+                if not isinstance(hash_val, str):
+                    with ignore_error():
+                        hash_val = ujson.dumps(hash_val)
+                rs_data[hash_key] = hash_val
+            hash_data = rs_data
+
         try:
             if not await self.redis_db.hmset(name, hash_data):
                 raise RedisClientError("save hash data failed, session_id={}".format(name))
@@ -287,28 +327,41 @@ class AIORedisClient(object):
         else:
             return name
 
-    async def get_hash_data(self, name, field_name=None, ex=EXPIRED):
+    async def get_hash_data(self, name, field_name=None, ex=EXPIRED, load_responses=False):
         """
         获取hash对象field_name对应的值
         Args:
             name: redis hash key的名称
             field_name: 获取的hash对象中属性的名称
             ex: 过期时间，单位秒
+            load_responses: 结果的键值是否进行load
         Returns:
             反序列化对象
         """
         try:
             if field_name:
-                data = await self.redis_db.hget(name, field_name)
+                hash_data = await self.redis_db.hget(name, field_name)
+                # 返回的键值对是否做load
+                if load_responses:
+                    with ignore_error():
+                        hash_data = ujson.loads(hash_data)
             else:
-                data = await self.redis_db.hgetall(name)
+                hash_data = await self.redis_db.hgetall(name)
+                # 返回的键值对是否做load
+                if load_responses:
+                    rs_data = {}
+                    for hash_key, hash_val in hash_data.items():
+                        with ignore_error():
+                            hash_val = ujson.loads(hash_val)
+                        rs_data[hash_key] = hash_val
+                    hash_data = rs_data
 
             if not await self.redis_db.expire(name, ex):
                 raise RedisClientError("set expire failed, name={}".format(name))
         except RedisError as e:
             raise RedisClientError(str(e))
         else:
-            return data
+            return hash_data
 
     async def get_list_data(self, name, start=0, end=-1, ex=EXPIRED):
         """
