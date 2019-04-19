@@ -294,11 +294,12 @@ class AIORedisClient(object):
                 raise RedisClientError("invalid session_id, session_id={}".format(session_id))
             return session
 
-    async def save_update_hash_data(self, name, hash_data: dict, ex=EXPIRED, dump_responses=False):
+    async def save_update_hash_data(self, name, hash_data: dict, field_name=None, ex=EXPIRED, dump_responses=False):
         """
         获取hash对象field_name对应的值
         Args:
             name: redis hash key的名称
+            field_name: 保存的hash mapping 中的某个字段
             hash_data: 获取的hash对象中属性的名称
             ex: 过期时间，单位秒
             dump_responses: 是否对每个键值进行dump
@@ -318,8 +319,13 @@ class AIORedisClient(object):
             hash_data = rs_data
 
         try:
-            if not await self.redis_db.hmset(name, hash_data):
-                raise RedisClientError("save hash data failed, session_id={}".format(name))
+            if not field_name:
+                if not await self.redis_db.hmset(name, hash_data):
+                    raise RedisClientError("save hash data mapping failed, session_id={}".format(name))
+            else:
+                if not await self.redis_db.hset(name, field_name, hash_data):
+                    raise RedisClientError("save hash data failed, session_id={}".format(name))
+
             if not await self.redis_db.expire(name, ex):
                 raise RedisClientError("set hash data expire failed, session_id={}".format(name))
         except RedisError as e:
