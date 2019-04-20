@@ -1,5 +1,10 @@
 ## aclients Changelog
 
+###[1.0.0b30] - 2019-4-20
+
+#### Changed 
+- 优化redis客户端，修改出现的错误
+
 ###[1.0.0b29] - 2019-4-19
 
 #### Changed 

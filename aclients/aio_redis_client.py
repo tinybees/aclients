@@ -308,23 +308,24 @@ class AIORedisClient(object):
         """
         if not isinstance(hash_data, MutableMapping):
             raise ValueError("hash data error, must be MutableMapping.")
-        # 是否对每个键值进行dump
-        if dump_responses:
-            rs_data = {}
-            for hash_key, hash_val in hash_data.items():
-                if not isinstance(hash_val, str):
-                    with ignore_error():
-                        hash_val = ujson.dumps(hash_val)
-                rs_data[hash_key] = hash_val
-            hash_data = rs_data
 
         try:
             if not field_name:
+                # 是否对每个键值进行dump
+                if dump_responses:
+                    rs_data = {}
+                    for hash_key, hash_val in hash_data.items():
+                        if not isinstance(hash_val, str):
+                            with ignore_error():
+                                hash_val = ujson.dumps(hash_val)
+                        rs_data[hash_key] = hash_val
+                    hash_data = rs_data
+
                 if not await self.redis_db.hmset(name, hash_data):
                     raise RedisClientError("save hash data mapping failed, session_id={}".format(name))
             else:
-                if not await self.redis_db.hset(name, field_name, hash_data):
-                    raise RedisClientError("save hash data failed, session_id={}".format(name))
+                hash_data = hash_data if isinstance(hash_data, str) else ujson.dumps(hash_data)
+                await self.redis_db.hset(name, field_name, hash_data)
 
             if not await self.redis_db.expire(name, ex):
                 raise RedisClientError("set hash data expire failed, session_id={}".format(name))
@@ -361,6 +362,8 @@ class AIORedisClient(object):
                             hash_val = ujson.loads(hash_val)
                         rs_data[hash_key] = hash_val
                     hash_data = rs_data
+            if not hash_data:
+                raise RedisClientError("not found hash data, name={}, field_name={}".format(name, field_name))
 
             if not await self.redis_db.expire(name, ex):
                 raise RedisClientError("set expire failed, name={}".format(name))
@@ -382,6 +385,9 @@ class AIORedisClient(object):
         """
         try:
             data = await self.redis_db.lrange(name, start=start, end=end)
+            if not data:
+                raise RedisClientError("not found list data, name={}, start={}, end={}".format(name, start, end))
+
             if not await self.redis_db.expire(name, ex):
                 raise RedisClientError("set expire failed, name={}".format(name))
         except RedisError as e:
@@ -445,6 +451,9 @@ class AIORedisClient(object):
         """
         try:
             data = await self.redis_db.get(name)
+            if not data:
+                raise RedisClientError("not found usual data, name={}".format(name))
+
             if not await self.redis_db.expire(name, ex):
                 raise RedisClientError("set expire failed, name={}".format(name))
 
