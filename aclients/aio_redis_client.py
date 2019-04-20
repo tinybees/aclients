@@ -271,8 +271,8 @@ class AIORedisClient(object):
                 session_data = hash_data
 
             if cls_flag:
-                return Session(account_id=session_data.pop('account_id'), session_id=session_data["session_id"],
-                               org_id=session_data["org_id"], permission_id=session_data["permission_id"],
+                return Session(account_id=session_data.pop('account_id'), org_id=session_data.pop("org_id"),
+                               role_id=session_data.pop("role_id"), permission_id=session_data.pop("permission_id"),
                                **session_data)
             else:
                 return session_data

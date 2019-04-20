@@ -1,5 +1,10 @@
 ## aclients Changelog
 
+###[1.0.0b29] - 2019-4-19
+
+#### Changed 
+- 修改redis中获取session返回session对象出错的问题
+
 ###[1.0.0b28] - 2019-4-19
 
 #### Added 
