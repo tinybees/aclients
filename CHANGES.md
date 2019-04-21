@@ -1,5 +1,10 @@
 ## aclients Changelog
 
+###[1.0.0b31] - 2019-4-21
+
+#### Changed 
+- 修改sanic版本为长期支持版本18.12LTS
+
 ###[1.0.0b30] - 2019-4-20
 
 #### Changed 
