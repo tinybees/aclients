@@ -83,7 +83,7 @@ def schema_validate(schema_obj, required: (tuple, list) = tuple(), is_extends=Tr
 
     msg_zh = "msg_zh" if use_zh else "msg_en"
     # 此处的功能保证，如果调用了多个校验装饰器，则其中一个更改了，所有的都会更改
-    if not getattr(schema_validate, "message", None) and message:
+    if not getattr(schema_validate, "message", None):
         setattr(schema_validate, "message", verify_message(schema_msg, message or {}))
 
     def _validated(func):
