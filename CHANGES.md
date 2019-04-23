@@ -1,5 +1,14 @@
 ## aclients Changelog
 
+###[1.0.0b32] - 2019-4-23
+
+#### Added 
+- 工具类utils中增加用于枚举实例的元类
+- tinylibs包中增加简单的异步信号实现blinker模块
+
+#### Changed 
+- 移动单例类Singleton从decorators到utils工具类
+
 ###[1.0.0b32] - 2019-4-22
 
 #### Changed 

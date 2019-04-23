@@ -9,6 +9,7 @@
 import asyncio
 import multiprocessing
 import sys
+import weakref
 from collections import MutableMapping, MutableSequence
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
@@ -23,7 +24,8 @@ try:
 except ImportError:
     from yaml import Loader
 
-__all__ = ("ignore_error", "verify_message", "wrap_async_func", "analysis_yaml", "gen_class_name", "objectid")
+__all__ = ("ignore_error", "verify_message", "wrap_async_func", "analysis_yaml", "gen_class_name", "objectid",
+           "Singleton", "Cached")
 
 # 执行任务的线程池
 pool = ThreadPoolExecutor(multiprocessing.cpu_count() * 10 + multiprocessing.cpu_count())
@@ -122,3 +124,43 @@ def objectid():
 
     """
     return str(ObjectId())
+
+
+class _Singleton(type):
+    """
+    singleton for class
+    """
+
+    def __init__(cls, *args, **kwargs):
+        cls.__instance = None
+        super().__init__(*args, **kwargs)
+
+    def __call__(cls, *args, **kwargs):
+        if cls.__instance is None:
+            cls.__instance = super().__call__(*args, **kwargs)
+            return cls.__instance
+        else:
+            return cls.__instance
+
+
+class _Cached(type):
+    def __init__(cls, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        cls.__cache = weakref.WeakValueDictionary()
+
+    def __call__(cls, *args, **kwargs):
+        cached_name = f"{args}{kwargs}"
+        if cached_name in cls.__cache:
+            return cls.__cache[cached_name]
+        else:
+            obj = super().__call__(*args, **kwargs)
+            cls.__cache[cached_name] = obj  # 这里是弱引用不能直接赋值，否则会被垃圾回收期回收
+            return obj
+
+
+class Singleton(metaclass=_Singleton):
+    pass
+
+
+class Cached(metaclass=_Cached):
+    pass

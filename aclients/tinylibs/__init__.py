@@ -8,3 +8,4 @@
 """
 
 from .tinymysql import *
+from .blinker import *
