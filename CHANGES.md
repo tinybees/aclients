@@ -1,6 +1,11 @@
 ## aclients Changelog
 
-###[1.0.0b32] - 2019-4-23
+###[1.0.0b34] - 2019-4-24
+
+#### Added 
+- 修改aiohttp client增加针对ip地址的URL中session接受cookie的功能开关
+
+###[1.0.0b33] - 2019-4-23
 
 #### Added 
 - 工具类utils中增加用于枚举实例的元类

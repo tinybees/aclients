@@ -24,7 +24,7 @@ class AIOHttpClient(Singleton):
     基于aiohttp的异步封装
     """
 
-    def __init__(self, app=None, *, timeout=5 * 60, verify_ssl=True, message=None, use_zh=True):
+    def __init__(self, app=None, *, timeout=5 * 60, verify_ssl=True, message=None, use_zh=True, cookiejar_unsafe=False):
         """
             基于aiohttp的异步封装
         Args:
@@ -33,6 +33,7 @@ class AIOHttpClient(Singleton):
             verify_ssl:verify ssl
             message: 提示消息
             use_zh: 消息提示是否使用中文，默认中文
+            cookiejar_unsafe: 是否打开cookiejar的非严格模式，默认false
         """
         self.session = None
         self.timeout = timeout
@@ -40,6 +41,9 @@ class AIOHttpClient(Singleton):
         self.message = message or {}
         self.use_zh = use_zh
         self.msg_zh = None
+        # 默认clientsession使用严格版本的cookiejar, 禁止ip地址的访问共享cookie
+        # 如果访问的是ip地址的URL，并且需要保持cookie则需要打开
+        self.cookiejar_unsafe = cookiejar_unsafe
 
         if app is not None:
             self.init_app(app, timeout=self.timeout, verify_ssl=self.verify_ssl, message=self.message,
@@ -73,7 +77,8 @@ class AIOHttpClient(Singleton):
             Returns:
 
             """
-            self.session = aiohttp.ClientSession()
+            jar = aiohttp.CookieJar(unsafe=self.cookiejar_unsafe)
+            self.session = aiohttp.ClientSession(cookie_jar=jar)
 
         @app.listener('after_server_stop')
         async def close_connection(app_, loop):
@@ -112,7 +117,8 @@ class AIOHttpClient(Singleton):
             Returns:
 
             """
-            self.session = aiohttp.ClientSession()
+            jar = aiohttp.CookieJar(unsafe=self.cookiejar_unsafe)
+            self.session = aiohttp.ClientSession(cookie_jar=jar)
 
         async def close_connection():
             """
