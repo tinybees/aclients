@@ -1,5 +1,10 @@
 ## aclients Changelog
 
+###[1.0.0b35] - 2019-4-29
+
+#### Changed 
+- 修改三方库的pymongo>=3.8.0,以上的版本实现了ObjectID 0.2版本规范,生成的ObjectID发生碰撞的可能行更小.
+
 ###[1.0.0b34] - 2019-4-24
 
 #### Added 
