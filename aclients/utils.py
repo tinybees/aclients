@@ -8,6 +8,8 @@
 """
 import asyncio
 import multiprocessing
+import secrets
+import string
 import sys
 import weakref
 from collections import MutableMapping, MutableSequence
@@ -25,10 +27,24 @@ except ImportError:
     from yaml import Loader
 
 __all__ = ("ignore_error", "verify_message", "wrap_async_func", "analysis_yaml", "gen_class_name", "objectid",
-           "Singleton", "Cached")
+           "Singleton", "Cached", "gen_ident")
 
 # 执行任务的线程池
 pool = ThreadPoolExecutor(multiprocessing.cpu_count() * 10 + multiprocessing.cpu_count())
+
+
+def gen_ident(ident_len=8):
+    """
+    获取随机的标识码以字母开头， 默认8个字符的长度
+    Args:
+
+    Returns:
+
+    """
+    ident_len = ident_len - 1
+    alphabet = f"{string.ascii_lowercase}{string.digits}"
+    ident = ''.join(secrets.choice(alphabet) for _ in range(ident_len))
+    return f"{secrets.choice(string.ascii_lowercase)}{ident}"
 
 
 @contextmanager
