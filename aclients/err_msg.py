@@ -50,9 +50,9 @@ http_msg = {
 
 schema_msg = {
     # schema valication message
-    201: {"msg_code": 201, "msg_zh": "请求body校验错误,请检查.", "msg_en": "Request body validation error, please check!",
+    201: {"msg_code": 201, "msg_zh": "数据提交有误，请重新检查.", "msg_en": "Request body validation error, please check!",
           "description": "marmallow校验body错误时的提示"},
-    202: {"msg_code": 202, "msg_zh": "请求body校验未知错误,请检查.",
+    202: {"msg_code": 202, "msg_zh": "数据提交未知错误，请重新检查.",
           "msg_en": "Request body validation unknow error, please check!",
           "description": "marmallow校验body未知错误时的提示"},
 }

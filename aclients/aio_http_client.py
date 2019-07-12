@@ -89,7 +89,8 @@ class AIOHttpClient(Singleton):
             Returns:
 
             """
-            await self.session.close()
+            if self.session:
+                await self.session.close()
 
     def init_session(self, *, timeout=None, verify_ssl=None, message=None, use_zh=None):
         """
@@ -128,7 +129,8 @@ class AIOHttpClient(Singleton):
             Returns:
 
             """
-            await self.session.close()
+            if self.session:
+                await self.session.close()
 
         loop.run_until_complete(open_connection())
         atexit.register(lambda: loop.run_until_complete(close_connection()))

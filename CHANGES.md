@@ -1,5 +1,11 @@
 ## aclients Changelog
 
+###[1.0.0b37] - 2019-7-12
+
+#### Changed 
+- 更改schema valication的中文提示信息
+- 更改http,mongo,mysql,redis中停止服务时会出现关闭pool报错的情况
+
 ###[1.0.0b36] - 2019-5-23
 
 #### Added 

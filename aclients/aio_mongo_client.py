@@ -117,7 +117,8 @@ class AIOMongoClient(object):
             Returns:
 
             """
-            self.client.close()
+            if self.client:
+                self.client.close()
 
     def init_engine(self, *, username=None, passwd=None, host=None, port=None, dbname=None,
                     pool_size=None, **kwargs):
@@ -169,7 +170,8 @@ class AIOMongoClient(object):
             Returns:
 
             """
-            self.client.close()
+            if self.client:
+                self.client.close()
 
     async def _insert_document(self, name, document, insert_one=True):
         """

@@ -112,8 +112,9 @@ class AIOMysqlClient(object):
             Returns:
 
             """
-            self.aio_engine.close()
-            await self.aio_engine.wait_closed()
+            if self.aio_engine:
+                self.aio_engine.close()
+                await self.aio_engine.wait_closed()
 
     def init_engine(self, *, username="root", passwd=None, host="127.0.0.1", port=3306, dbname=None,
                     pool_size=50, **kwargs):
@@ -165,8 +166,9 @@ class AIOMysqlClient(object):
             Returns:
 
             """
-            self.aio_engine.close()
-            await self.aio_engine.wait_closed()
+            if self.aio_engine:
+                self.aio_engine.close()
+                await self.aio_engine.wait_closed()
 
         loop.run_until_complete(open_connection())
         atexit.register(lambda: loop.run_until_complete(close_connection()))
