@@ -34,7 +34,7 @@ class AIOMysqlClient(object):
     def __init__(self, app=None, *, username="root", passwd=None, host="127.0.0.1", port=3306, dbname=None,
                  pool_size=50, **kwargs):
         """
-        mongo 非阻塞工具类
+        mysql 非阻塞工具类
         Args:
             app: app应用
             host:mysql host

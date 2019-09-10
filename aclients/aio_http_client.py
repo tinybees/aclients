@@ -26,7 +26,7 @@ class AIOHttpClient(Singleton):
 
     def __init__(self, app=None, *, timeout=5 * 60, verify_ssl=True, message=None, use_zh=True, cookiejar_unsafe=False):
         """
-            基于aiohttp的异步封装
+        基于aiohttp的异步封装
         Args:
             app: app应用
             timeout:request timeout
