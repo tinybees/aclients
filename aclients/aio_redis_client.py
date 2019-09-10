@@ -21,7 +21,8 @@ from .utils import ignore_error
 
 __all__ = ("Session", "AIORedisClient")
 
-EXPIRED = 24 * 60 * 60
+EXPIRED = 12 * 60 * 60  # 通用过期时间
+SESSION_EXPIRED = 30 * 60  # session过期时间
 
 
 class Session(object):
@@ -158,7 +159,7 @@ class AIORedisClient(object):
             if self.pool:
                 self.pool.disconnect()
 
-    async def save_session(self, session: Session, dump_responses=False, ex=EXPIRED):
+    async def save_session(self, session: Session, dump_responses=False, ex=SESSION_EXPIRED):
         """
         利用hash map保存session
         Args:
@@ -210,7 +211,7 @@ class AIORedisClient(object):
             aelog.exception("delete session error: {}, {}".format(session_id, e))
             raise RedisClientError(str(e))
 
-    async def update_session(self, session: Session, dump_responses=False, ex=EXPIRED):
+    async def update_session(self, session: Session, dump_responses=False, ex=SESSION_EXPIRED):
         """
         利用hash map更新session
         Args:
@@ -240,7 +241,7 @@ class AIORedisClient(object):
             aelog.exception("update session error: {}, {}".format(session_data["session_id"], e))
             raise RedisClientError(str(e))
 
-    async def get_session(self, session_id, ex=EXPIRED, cls_flag=True, load_responses=False) -> Session:
+    async def get_session(self, session_id, ex=SESSION_EXPIRED, cls_flag=True, load_responses=False) -> Session:
         """
         获取session
         Args:
