@@ -198,7 +198,8 @@ class AIORedisClient(object):
             except RedisClientError as e:
                 aelog.info(f"{session.account_id} no old token token, {str(e)}")
             else:
-                await self.delete_session(old_session_id, False)
+                with ignore_error():
+                    await self.delete_session(old_session_id, False)
             # 更新新的令牌
             await self.save_update_hash_data(self._account_key, field_name=session.account_id,
                                              hash_data=session.session_id, ex=LONG_EXPIRED)

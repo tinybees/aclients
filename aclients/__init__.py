@@ -12,4 +12,4 @@ from .aio_mysql_client import *
 from .aio_redis_client import *
 from .aio_http_client import *
 
-__version__ = "1.0.0b39"
+__version__ = "1.0.0b40"
