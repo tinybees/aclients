@@ -1,6 +1,6 @@
 ## aclients Changelog
 
-###[1.0.0b39] - 2019-9-10
+###[1.0.0b40] - 2019-9-11
 
 #### Changed 
 - 更改由于session过期后再次登录删除老的session报错的问题
