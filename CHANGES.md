@@ -1,5 +1,14 @@
 ## aclients Changelog
 
+###[1.0.0b41] - 2019-9-27
+
+#### Added 
+- 增加incrbynumber方法，可以增加整数或者浮点数
+
+#### Changed 
+- 优化redis client中所有的设置过期时间的实现方式
+- 优化获取数据的方式，去掉不适宜的异常
+
 ###[1.0.0b40] - 2019-9-11
 
 #### Changed 
