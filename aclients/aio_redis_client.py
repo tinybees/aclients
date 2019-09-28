@@ -34,9 +34,9 @@ class Session(object):
 
     """
 
-    def __init__(self, account_id, *, org_id=None, role_id=None, permission_id=None, **kwargs):
+    def __init__(self, account_id, *, session_id=None, org_id=None, role_id=None, permission_id=None, **kwargs):
         self.account_id = account_id  # 账户ID
-        self.session_id = secrets.token_urlsafe()  # session ID
+        self.session_id = secrets.token_urlsafe() if not session_id else session_id  # session ID
         self.org_id = org_id or uuid.uuid4().hex  # 账户的组织结构在redis中的ID
         self.role_id = role_id or uuid.uuid4().hex  # 账户的角色在redis中的ID
         self.permission_id = permission_id or uuid.uuid4().hex  # 账户的权限在redis中的ID
@@ -308,9 +308,9 @@ class AIORedisClient(object):
                 session_data = hash_data
 
             if cls_flag:
-                return Session(account_id=session_data.pop('account_id'), org_id=session_data.pop("org_id"),
-                               role_id=session_data.pop("role_id"), permission_id=session_data.pop("permission_id"),
-                               **session_data)
+                return Session(session_data.pop('account_id'), session_id=session_data.pop('session_id'),
+                               org_id=session_data.pop("org_id"), role_id=session_data.pop("role_id"),
+                               permission_id=session_data.pop("permission_id"), **session_data)
             else:
                 return session_data
 
@@ -496,19 +496,20 @@ class AIORedisClient(object):
         else:
             return name
 
-    async def get_usual_data(self, name, load_responses=True, ex=EXPIRED):
+    async def get_usual_data(self, name, load_responses=True, update_expire=True, ex=EXPIRED):
         """
         获取name对应的值
         Args:
             name: redis key的名称
             load_responses: 是否转码默认转码
+            update_expire: 是否更新过期时间
             ex: 过期时间，单位秒
         Returns:
             反序列化对象
         """
         data = await self.redis_db.get(name)
 
-        if data is not None:  # 保证key存在时设置过期时间
+        if data is not None and update_expire:  # 保证key存在时设置过期时间
             if not await self.redis_db.expire(name, ex):
                 aelog.error("set expire failed, name={}".format(name))
 
