@@ -411,7 +411,7 @@ class AIORedisClient(object):
 
     async def get_list_data(self, name, start=0, end=-1, ex=EXPIRED):
         """
-        保存数据到redis的列表中
+        获取redis的列表中的数据
         Args:
             name: redis key的名称
             start: 获取数据的起始位置,默认列表的第一个值
