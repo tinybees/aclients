@@ -235,7 +235,7 @@ class AIORedisClient(object):
                     await self.redis_db.hdel(self._account_key, session_data["account_id"])
 
             if not await self.redis_db.delete(session_id):
-                raise RedisClientError("delete session failed, session_id={}".format(session_id))
+                aelog.error("delete session failed, session_id={}".format(session_id))
         except RedisError as e:
             aelog.exception("delete session error: {}, {}".format(session_id, e))
             raise RedisClientError(str(e))

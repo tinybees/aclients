@@ -1,6 +1,6 @@
 ## aclients Changelog
 
-###[1.0.0b42] - 2019-9-27
+###[1.0.0b43] - 2019-9-27
 
 #### Added 
 - 增加incrbynumber方法，可以增加整数或者浮点数
