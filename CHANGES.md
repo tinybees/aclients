@@ -5,6 +5,7 @@
 #### Added 
 - 增加incrbynumber方法，可以增加整数或者浮点数
 - 添加四个扩展到app的反向引用
+- 增加add_task异步任务执行
 
 #### Changed 
 - 优化redis client中所有的设置过期时间的实现方式

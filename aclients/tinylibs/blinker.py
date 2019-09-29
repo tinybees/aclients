@@ -8,12 +8,30 @@
 
 实现简单的信号，用于业务解耦
 """
+import asyncio
 
 from sanic import Sanic
 
 from aclients.utils import Cached
 
-__all__ = ("Signal",)
+__all__ = ("Signal", "add_task")
+
+
+def add_task(app: Sanic, func, **kwargs):
+    """
+    添加异步执行任务
+    Args:
+        app: sanic的应用
+        func: 要执行的函数
+        kwargs: 执行函数需要的参数
+    Returns:
+
+    """
+    if not isinstance(app, Sanic):
+        raise TypeError("app type must be Sanic type.")
+    if not asyncio.iscoroutinefunction(func):
+        raise TypeError("func type must be coroutine function.")
+    app.loop.create_task(func(**kwargs))
 
 
 class Signal(Cached):
