@@ -44,7 +44,7 @@ class AIOMysqlClient(object):
             passwd: mysql password
             pool_size: mysql pool size
         """
-
+        self.app = app
         self.aio_engine = None
         self.username = username
         self.passwd = passwd
@@ -88,6 +88,7 @@ class AIOMysqlClient(object):
         passwd = passwd if passwd is None else str(passwd)
         self.message = verify_message(mysql_msg, message)
         self.msg_zh = "msg_zh" if use_zh else "msg_en"
+        self.app = app
 
         @app.listener('before_server_start')
         async def open_connection(app_, loop):

@@ -64,6 +64,7 @@ class AIORedisClient(object):
             passwd: redis password
             pool_size: redis pool size
         """
+        self.app = app
         self.pool = None
         self.redis_db: aredis.StrictRedis = None
         self.host = host
@@ -90,6 +91,7 @@ class AIORedisClient(object):
         Returns:
 
         """
+        self.app = app
         host = host or app.config.get("ACLIENTS_REDIS_HOST", None) or self.host
         port = port or app.config.get("ACLIENTS_REDIS_PORT", None) or self.port
         dbname = dbname or app.config.get("ACLIENTS_REDIS_DBNAME", None) or self.dbname

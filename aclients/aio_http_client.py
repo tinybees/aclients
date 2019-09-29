@@ -35,6 +35,7 @@ class AIOHttpClient(Singleton):
             use_zh: 消息提示是否使用中文，默认中文
             cookiejar_unsafe: 是否打开cookiejar的非严格模式，默认false
         """
+        self.app = app
         self.session = None
         self.timeout = timeout
         self.verify_ssl = verify_ssl
@@ -61,6 +62,7 @@ class AIOHttpClient(Singleton):
         Returns:
 
         """
+        self.app = app
         self.timeout = timeout or app.config.get("ACLIENTS_HTTP_TIMEOUT", None) or self.timeout
         self.verify_ssl = verify_ssl or app.config.get("ACLIENTS_HTTP_VERIFYSSL", None) or self.verify_ssl
         message = message or app.config.get("ACLIENTS_HTTP_MESSAGE", None) or self.message

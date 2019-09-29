@@ -1,9 +1,10 @@
 ## aclients Changelog
 
-###[1.0.0b43] - 2019-9-27
+###[1.0.0b44] - 2019-9-29
 
 #### Added 
 - 增加incrbynumber方法，可以增加整数或者浮点数
+- 添加四个扩展到app的反向引用
 
 #### Changed 
 - 优化redis client中所有的设置过期时间的实现方式

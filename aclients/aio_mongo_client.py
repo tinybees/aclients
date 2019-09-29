@@ -42,6 +42,7 @@ class AIOMongoClient(object):
             passwd: mongo password
             pool_size: mongo pool size
         """
+        self.app = app
         self.client = None
         self.db = None
         self.username = username
@@ -85,6 +86,7 @@ class AIOMongoClient(object):
         passwd = passwd if passwd is None else str(passwd)
         self.message = verify_message(mongo_msg, message)
         self.msg_zh = "msg_zh" if use_zh else "msg_en"
+        self.app = app
 
         @app.listener('before_server_start')
         async def open_connection(app_, loop):
