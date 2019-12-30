@@ -17,7 +17,7 @@ from pymysql.err import IntegrityError, MySQLError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.orm.attributes import InstrumentedAttribute
-from sqlalchemy.sql import delete, desc, func, insert, or_, select, update
+from sqlalchemy.sql import asc, delete, desc, func, insert, or_, select, update
 
 from .err_msg import mysql_msg
 from .exceptions import FuncArgsError, HttpError, MysqlDuplicateKeyError, MysqlError, QueryArgsError
@@ -379,6 +379,10 @@ class AIOMysqlClient(object):
                 query = self._column_expression(model, query, query_key, or_query_key)
             if order:
                 query = query.order_by(desc(order[0])) if order[1] == 1 else query.order_by(order[0])
+            else:
+                model_ = model[0] if isinstance(model, MutableSequence) else model
+                if getattr(model_, "id", None) is not None:
+                    query = query.order_by(asc("id"))
             if limit:
                 query = query.limit(limit)
             if skip:
