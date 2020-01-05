@@ -8,22 +8,29 @@
 """
 import asyncio
 import atexit
-from collections import MutableMapping, MutableSequence
+from typing import (Dict, List, MutableMapping, MutableSequence, Tuple)
 
 import aelog
 from aiomysql.sa import create_engine
 from aiomysql.sa.exc import Error
+from aiomysql.sa.result import ResultProxy, RowProxy
 from pymysql.err import IntegrityError, MySQLError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.orm.attributes import InstrumentedAttribute
-from sqlalchemy.sql import asc, delete, desc, func, insert, or_, select, update
+from sqlalchemy.sql import (Select, all_, and_, any_, asc, bindparam, case, cast, column, delete, desc, distinct,
+                            except_, except_all, exists, extract, false, func, funcfilter, insert, intersect,
+                            intersect_all, join, label, not_, null, nullsfirst, nullslast, or_, outerjoin, over, select,
+                            table, text, true, tuple_, type_coerce, union, union_all, update, within_group)
 
 from .err_msg import mysql_msg
 from .exceptions import FuncArgsError, HttpError, MysqlDuplicateKeyError, MysqlError, QueryArgsError
 from .utils import verify_message
 
-__all__ = ("AIOMysqlClient",)
+__all__ = ("AIOMysqlClient", "all_", "any_", "and_", "or_", "bindparam", "select", "text", "table", "column",
+           "over", "within_group", "label", "case", "cast", "extract", "tuple_", "except_", "except_all", "intersect",
+           "intersect_all", "union", "union_all", "exists", "nullsfirst", "nullslast", "asc", "desc", "distinct",
+           "type_coerce", "true", "false", "null", "join", "outerjoin", "funcfilter", "func", "not_")
 
 
 class AIOMysqlClient(object):
@@ -100,9 +107,8 @@ class AIOMysqlClient(object):
 
             """
             # engine
-            # 增加autocommit = True可以解决个别情况下，提交了数据但是查询还是老的数据的问题
             self.aio_engine = await create_engine(user=username, db=dbname, host=host, port=port,
-                                                  password=passwd, maxsize=pool_size, charset="utf8")
+                                                  password=passwd, maxsize=pool_size, charset="utf8mb4")
 
         @app.listener('after_server_stop')
         async def close_connection(app_, loop):
@@ -155,7 +161,6 @@ class AIOMysqlClient(object):
 
             """
             # engine
-            # 增加autocommit = True可以解决个别情况下，提交了数据但是查询还是老的数据的问题
             self.aio_engine = await create_engine(user=username, db=dbname, host=host, port=port,
                                                   password=passwd, maxsize=pool_size, charset="utf8")
 
@@ -175,7 +180,7 @@ class AIOMysqlClient(object):
         atexit.register(lambda: loop.run_until_complete(close_connection()))
 
     @staticmethod
-    def _get_model_default_value(model) -> dict:
+    def _get_model_default_value(model) -> Dict:
         """
 
         Args:
@@ -194,7 +199,7 @@ class AIOMysqlClient(object):
         return default_values
 
     @staticmethod
-    def _get_model_onupdate_value(model) -> dict:
+    def _get_model_onupdate_value(model) -> Dict:
         """
 
         Args:
@@ -209,321 +214,20 @@ class AIOMysqlClient(object):
                     update_values[key] = val.onupdate.arg.__wrapped__()
         return update_values
 
-    async def _insert_one(self, model, insert_data: dict):
-        """
-        插入数据
-        Args:
-            model: model
-            insert_data: 值类型
-        Returns:
-            返回插入的条数
-        """
-        try:
-            query = insert(model).values(insert_data)
-            new_values = self._get_model_default_value(model)
-            new_values.update(insert_data)
-        except SQLAlchemyError as e:
-            aelog.exception(e)
-            raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
-        else:
-            async with self.aio_engine.acquire() as conn:
-                async with conn.begin() as trans:
-                    try:
-                        cursor = await conn.execute(query, new_values)
-                    except IntegrityError as e:
-                        await trans.rollback()
-                        aelog.exception(e)
-                        if "Duplicate" in str(e):
-                            raise MysqlDuplicateKeyError(e)
-                        else:
-                            raise MysqlError(e)
-                    except (MySQLError, Error) as e:
-                        await trans.rollback()
-                        aelog.exception(e)
-                        raise MysqlError(e)
-                    except Exception as e:
-                        await trans.rollback()
-                        aelog.exception(e)
-                        raise HttpError(500, message=self.message[1][self.msg_zh], error=e)
-                    else:
-                        # 理论也是不应该加的，但是出现过一个连接提交后另一个连接拿不到数据的情况，而开启autocommit后就可以了，因此这里
-                        # 加一条
-                        await conn.execute('commit')
-        return cursor.rowcount, new_values.get("id") or cursor.lastrowid
-
-    async def _update_data(self, model, query_key: dict, or_query_key: dict, update_data: dict):
-        """
-        更新数据
-        Args:
-            model: model
-            query_key: 更新的查询条件
-            update_data: 值类型
-            or_query_key: 或查询model的过滤条件
-        Returns:
-            返回更新的条数
-        """
-        try:
-            query = update(model)
-            if query_key or or_query_key:
-                query = self._column_expression(model, query, query_key, or_query_key)
-            query = query.values(update_data)
-            new_values = self._get_model_onupdate_value(model)
-            new_values.update(update_data)
-        except SQLAlchemyError as e:
-            aelog.exception(e)
-            raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
-        else:
-            async with self.aio_engine.acquire() as conn:
-                async with conn.begin() as trans:
-                    try:
-                        cursor = await conn.execute(query, new_values)
-                    except IntegrityError as e:
-                        await trans.rollback()
-                        aelog.exception(e)
-                        if "Duplicate" in str(e):
-                            raise MysqlDuplicateKeyError(e)
-                        else:
-                            raise MysqlError(e)
-                    except (MySQLError, Error) as e:
-                        await trans.rollback()
-                        aelog.exception(e)
-                        raise MysqlError(e)
-                    except Exception as e:
-                        await trans.rollback()
-                        aelog.exception(e)
-                        raise HttpError(500, message=self.message[2][self.msg_zh], error=e)
-                    else:
-                        await conn.execute('commit')
-        return cursor.rowcount
-
-    async def _delete_data(self, model, query_key: dict, or_query_key: dict):
-        """
-        更新数据
-        Args:
-            model: model
-            query_key: 删除的查询条件
-            or_query_key: 或查询model的过滤条件
-        Returns:
-            返回删除的条数
-        """
-        try:
-            query = delete(model)
-            if query_key or or_query_key:
-                query = self._column_expression(model, query, query_key, or_query_key)
-        except SQLAlchemyError as e:
-            aelog.exception(e)
-            raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
-        else:
-            async with self.aio_engine.acquire() as conn:
-                async with conn.begin() as trans:
-                    try:
-                        cursor = await conn.execute(query)
-                    except (MySQLError, Error) as e:
-                        await trans.rollback()
-                        aelog.exception(e)
-                        raise MysqlError(e)
-                    except Exception as e:
-                        await trans.rollback()
-                        aelog.exception(e)
-                        raise HttpError(500, message=self.message[3][self.msg_zh], error=e)
-                    else:
-                        await conn.execute('commit')
-        return cursor.rowcount
-
-    async def _find_one(self, model: list, query_key: dict, or_query_key: dict):
-        """
-        查询单条数据
-        Args:
-            model: 查询的model名称
-            query_key: 查询model的过滤条件
-            or_query_key: 或查询model的过滤条件
-        Returns:
-            返回匹配的数据或者None
-        """
-        try:
-            query = select(model)
-            if query_key or or_query_key:
-                query = self._column_expression(model, query, query_key, or_query_key)
-        except SQLAlchemyError as e:
-            aelog.exception(e)
-            raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
-        else:
-            try:
-                async with self.aio_engine.acquire() as conn:
-                    async with conn.execute(query) as cursor:
-                        resp = await  cursor.fetchone()
-                    await conn.execute('commit')  # 理论上不应该加这个的，但是这里默认就会启动一个事务，很奇怪
-            except (MySQLError, Error) as err:
-                aelog.exception("Find one data failed, {}".format(err))
-                raise HttpError(400, message=self.message[4][self.msg_zh], error=err)
-            else:
-                return dict(resp) if resp else None
-
-    async def _find_data(self, model: list, query_key: dict, or_query_key: dict, limit: int,
-                         skip: int, order: tuple):
-        """
-        查询单条数据
-        Args:
-            model: 查询的model名称
-            query_key: 查询model的过滤条件
-            limit: 每页条数
-            skip： 需要跳过的条数
-            order: 排序条件
-            or_query_key: 或查询model的过滤条件
-        Returns:
-            返回匹配的数据或者None
-        """
-        try:
-            query = select(model)
-            if query_key or or_query_key:
-                query = self._column_expression(model, query, query_key, or_query_key)
-            if order:
-                query = query.order_by(desc(order[0])) if order[1] == 1 else query.order_by(order[0])
-            else:
-                model_ = model[0] if isinstance(model, MutableSequence) else model
-                if getattr(model_, "id", None) is not None:
-                    query = query.order_by(asc("id"))
-            if limit:
-                query = query.limit(limit)
-            if skip:
-                query = query.offset(skip)
-        except SQLAlchemyError as e:
-            aelog.exception(e)
-            raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
-        else:
-            try:
-                async with self.aio_engine.acquire() as conn:
-                    async with conn.execute(query) as cursor:
-                        resp = await  cursor.fetchall()
-                    await conn.execute('commit')
-            except (MySQLError, Error) as err:
-                aelog.exception("Find data failed, {}".format(err))
-                raise HttpError(400, message=self.message[5][self.msg_zh], error=err)
-            else:
-                return [dict(val) for val in resp] if resp else []
-
-    async def _find_count(self, model, query_key: dict, or_query_key: dict):
-        """
-        查询单条数据
-        Args:
-            model: 查询的model名称
-            query_key: 查询model的过滤条件
-            or_query_key: 或查询model的过滤条件
-        Returns:
-            返回条数
-        """
-        try:
-            query = select([func.count().label("count")]).select_from(model)
-            if query_key or or_query_key:
-                query = self._column_expression(model, query, query_key, or_query_key)
-        except SQLAlchemyError as e:
-            aelog.exception(e)
-            raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
-        else:
-            try:
-                async with self.aio_engine.acquire() as conn:
-                    async with conn.execute(query) as cursor:
-                        resp = await  cursor.fetchone()
-                    await conn.execute('commit')
-            except (MySQLError, Error) as err:
-                aelog.exception("Find data failed, {}".format(err))
-                raise HttpError(400, message=self.message[5][self.msg_zh], error=err)
-            else:
-                return resp.count
-
-    @staticmethod
-    def _column_expression(model: list, query, query_key: dict, or_query_key: dict):
-        """
-        查询单条数据
-        Args:
-            model: 查询的model名称
-            query: 查询的query基本expression
-            query_key: 查询model的过滤条件
-            or_query_key: 或查询model的过滤条件
-        Returns:
-            返回匹配的数据或者None
-        """
-        model = model if isinstance(model, MutableSequence) else [model]
-        query_key = query_key if isinstance(query_key, MutableMapping) else {}
-        or_query_key = or_query_key if isinstance(or_query_key, MutableMapping) else {}
-
-        maps = {
-            "eq": lambda column_name, column_val: query.where(column_name == column_val),
-            "ne": lambda column_name, column_val: query.where(column_name != column_val),
-            "gt": lambda column_name, column_val: query.where(column_name > column_val),
-            "gte": lambda column_name, column_val: query.where(column_name >= column_val),
-            "lt": lambda column_name, column_val: query.where(column_name < column_val),
-            "lte": lambda column_name, column_val: query.where(column_name <= column_val),
-            "in": lambda column_name, column_val: query.where(column_name.in_(column_val)),
-            "nin": lambda column_name, column_val: query.where(column_name.notin_(column_val)),
-            "like": lambda column_name, column_val: query.where(column_name.like(column_val)),
-            "ilike": lambda column_name, column_val: query.where(column_name.ilike(column_val)),
-            "between": lambda column_name, column_val: query.where(
-                column_name.between(column_val[0], column_val[1]))}
-        or_maps = {
-            "eq": lambda column_name, column_val: column_name == column_val,
-            "ne": lambda column_name, column_val: column_name != column_val,
-            "gt": lambda column_name, column_val: column_name > column_val,
-            "gte": lambda column_name, column_val: column_name >= column_val,
-            "lt": lambda column_name, column_val: column_name < column_val,
-            "lte": lambda column_name, column_val: column_name <= column_val,
-            "in": lambda column_name, column_val: column_name.in_(column_val),
-            "nin": lambda column_name, column_val: column_name.notin_(column_val),
-            "like": lambda column_name, column_val: column_name.like(column_val),
-            "ilike": lambda column_name, column_val: column_name.ilike(column_val),
-            "between": lambda column_name, column_val: column_name.between(column_val[0], column_val[1])
-        }
-
-        def or_query(column_val: MutableSequence):
-            """
-            组装or查询表达式
-            Args:
-
-            Returns:
-
-            """
-            return query.where(or_(*column_val))
-
-        # 如果出现[model1, model2]则只考虑第一个，因为如果多表查询，则必须在query_key中指定清楚，这里只处理大多数情况
-        model = model[0] if not isinstance(model[0], InstrumentedAttribute) else getattr(model[0], "class_")
-        for field_name, val in query_key.items():
-            field_name = getattr(model, field_name) if not isinstance(field_name, InstrumentedAttribute) else field_name
-            # 因为判断相等的查询比较多，因此默认就是==
-            if not isinstance(val, MutableMapping):
-                query = maps["eq"](field_name, val)
-            else:
-                # 其他情况则需要指定是什么查询，大于、小于或者是like等
-                # 可能会出现多个查询的情况，比如{"key": {"gt": 3, "lt": 9}}
-                for operate, value in val.items():
-                    if operate in maps:
-                        query = maps[operate](field_name, value)
-        # or 查询 {"key": {"gt": 3, "lt": 9}}
-        for field_name, or_value in or_query_key.items():
-            field_name = getattr(model, field_name) if not isinstance(field_name, InstrumentedAttribute) else field_name
-            or_args = []
-            for operate, sub_or_value in or_value.items():
-                if operate in or_maps:
-                    if not isinstance(sub_or_value, MutableSequence):
-                        or_args.append(or_maps[operate](field_name, sub_or_value))
-                    else:
-                        for val in sub_or_value:
-                            or_args.append(or_maps[operate](field_name, val))
-            else:
-                query = or_query(or_args)
-        return query
-
-    async def execute(self, query):
+    async def _execute(self, query, params: List or Dict, msg_code: int) -> ResultProxy:
         """
         插入数据，更新或者删除数据
         Args:
             query: SQL的查询字符串或者sqlalchemy表达式
+            params: 执行的参数值,可以是单个对象的字典也可以是多个对象的列表
+            msg_code: 消息提示编码
         Returns:
             不确定执行的是什么查询，直接返回ResultProxy实例
         """
         async with self.aio_engine.acquire() as conn:
             async with conn.begin() as trans:
                 try:
-                    cursor = await conn.execute(query)
+                    cursor = await conn.execute(query, params)
                 except IntegrityError as e:
                     await trans.rollback()
                     aelog.exception(e)
@@ -538,62 +242,296 @@ class AIOMysqlClient(object):
                 except Exception as e:
                     await trans.rollback()
                     aelog.exception(e)
-                    raise HttpError(500, message=self.message[6][self.msg_zh], error=e)
+                    raise HttpError(400, message=self.message[msg_code][self.msg_zh])
                 else:
-                    await conn.execute('commit')
+                    await trans.commit()
         return cursor
 
-    async def query(self, query):
+    async def _query_execute(self, query, params: Dict) -> ResultProxy:
+        """
+        查询数据
+        Args:
+            query: SQL的查询字符串或者sqlalchemy表达式
+            params: 执行的参数值,
+        Returns:
+            不确定执行的是什么查询，直接返回ResultProxy实例
+        """
+        async with self.aio_engine.acquire() as conn:
+            try:
+                cursor = await conn.execute(query, params)
+            except (MySQLError, Error) as e:
+                aelog.exception("Find data failed, {}".format(e))
+                raise HttpError(400, message=self.message[4][self.msg_zh])
+            except Exception as e:
+                aelog.exception(e)
+                raise HttpError(400, message=self.message[4][self.msg_zh])
+
+        return cursor
+
+    async def _insert_one(self, model, insert_data: Dict) -> Tuple[int, str]:
+        """
+        插入数据
+        Args:
+            model: sqlalchemy中的model或者table
+            insert_data: 值类型
+        Returns:
+            (插入的条数,插入的ID)
+        """
+        try:
+            insert_data_ = self._get_model_default_value(model)
+            insert_data_.update(insert_data)
+            query = insert(model).values(insert_data_)
+        except SQLAlchemyError as e:
+            aelog.exception(e)
+            raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
+        else:
+            async with self._execute(query, insert_data_, 1) as cursor:
+                return cursor.rowcount, insert_data_.get("id") or cursor.lastrowid
+
+    async def _insert_from_select(self, model, column_names: List, select_query: Select) -> Tuple[int, str]:
+        """
+        查询并且插入数据, ``INSERT...FROM SELECT`` statement.
+
+        e.g.::
+
+            sel = select([table1.c.a, table1.c.b]).where(table1.c.c > 5)
+            ins = table2.insert().from_select(['a', 'b'], sel)
+        Args:
+            model: sqlalchemy中的model或者table
+            column_names: 字符串列名列表或者Column类列名列表
+            select_query: select表达式
+        Returns:
+            (插入的条数,插入的ID)
+        """
+        try:
+            query = insert(model).from_select(column_names, select_query)
+        except SQLAlchemyError as e:
+            aelog.exception(e)
+            raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
+        else:
+            async with await self._execute(query, {}, 1) as cursor:
+                return cursor.rowcount, cursor.lastrowid
+
+    async def _insert_many(self, model, insert_data: List[Dict]) -> int:
+        """
+        插入多条数据
+
+        eg: User.insert().values([{"name": "test1"}, {"name": "test2"}]
+        Args:
+            model: sqlalchemy中的model或者table
+            insert_data: 值类型
+        Returns:
+            插入的条数
+        """
+        try:
+            insert_data_ = self._get_model_default_value(model)
+            insert_data_ = [{**insert_data_, **one_data} for one_data in insert_data]
+            query = insert(model).values(insert_data_)
+        except SQLAlchemyError as e:
+            aelog.exception(e)
+            raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
+        else:
+            async with self._execute(query, insert_data_, 1) as cursor:
+                return cursor.rowcount
+
+    async def _update_data(self, model, query_key: List, update_data: Dict or List) -> int:
+        """
+        更新数据
+
+        eg: where(User.c.id == bindparam("id")).values({"name": bindparam("name")})
+         await conn.execute(sql, [{"id": 1, "name": "t1"}, {"id": 2, "name": "t2"}]
+        Args:
+            model: sqlalchemy中的model或者table
+            query_key: 更新的查询条件
+            update_data: 值类型
+        Returns:
+            返回更新的条数
+        """
+        try:
+            update_data_ = self._get_model_onupdate_value(model)
+            if isinstance(update_data, MutableMapping):
+                update_data_ = {**update_data_, **update_data}
+            else:
+                update_data_ = [{**update_data_, **one_data} for one_data in update_data]
+            query = update(model).where(*query_key).values(update_data_)
+        except SQLAlchemyError as e:
+            aelog.exception(e)
+            raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
+        else:
+            async with await self._execute(query, update_data_, 2) as cursor:
+                return cursor.rowcount
+
+    async def _delete_data(self, model, query_key: List) -> int:
+        """
+        更新数据
+        Args:
+            model: sqlalchemy中的model或者table
+            query_key: 删除的查询条件
+        Returns:
+            返回删除的条数
+        """
+        try:
+            query = delete(model).where(*query_key)
+        except SQLAlchemyError as e:
+            aelog.exception(e)
+            raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
+        else:
+            rowcount = 0
+            async with self.aio_engine.acquire() as conn:
+                async with conn.begin() as trans:
+                    try:
+                        async with conn.execute(query) as cursor:
+                            rowcount = cursor.rowcount
+                    except (MySQLError, Error) as e:
+                        await trans.rollback()
+                        aelog.exception(e)
+                        raise MysqlError(e)
+                    except Exception as e:
+                        await trans.rollback()
+                        aelog.exception(e)
+                        raise HttpError(400, message=self.message[3][self.msg_zh])
+                    else:
+                        await trans.commit()
+            return rowcount
+
+    async def _find_one(self, model: List, query_key: List, ):
+        """
+        查询单条数据
+        Args:
+            model: sqlalchemy中的model或者table
+            query_key: 查询model的过滤条件
+        Returns:
+            返回匹配的数据或者None
+        """
+        try:
+            query = select(model).where
+            # if query_key:
+            #     query = self._column_expression(model, query, query_key, )
+        except SQLAlchemyError as e:
+            aelog.exception(e)
+            raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
+        else:
+            async with self._query_execute(query) as cursor:
+                resp = await cursor.fetchone()
+            return dict(resp) if resp else None
+
+    async def _find_data(self, model: List, query_key: dict, limit: int,
+                         skip: int, ):
+        """
+        查询单条数据
+        Args:
+            model: sqlalchemy中的model或者table
+            query_key: 查询model的过滤条件
+            limit: 每页条数
+            skip： 需要跳过的条数
+            order: 排序条件
+        Returns:
+            返回匹配的数据或者None
+        """
+        try:
+            query = select(model)
+            # if query_key or or_query_key:
+            #     query = self._column_expression(model, query, query_key, or_query_key)
+            # if order:
+            #     query = query.order_by(desc(order[0])) if order[1] == 1 else query.order_by(order[0])
+            # else:
+            #     model_ = model[0] if isinstance(model, MutableSequence) else model
+            #     if getattr(model_, "id", None) is not None:
+            #         query = query.order_by(asc("id"))
+            if limit:
+                query = query.limit(limit)
+            if skip:
+                query = query.offset(skip)
+        except SQLAlchemyError as e:
+            aelog.exception(e)
+            raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
+        else:
+            async with self._query_execute(query) as cursor:
+                resp = await cursor.fetchall()
+            return [dict(val) for val in resp] if resp else []
+
+    async def _find_count(self, model, query_key: dict):
+        """
+        查询单条数据
+        Args:
+            model: sqlalchemy中的model或者table
+            query_key: 查询model的过滤条件
+        Returns:
+            返回条数
+        """
+        try:
+            query = select([func.count().label("count")]).select_from(model)
+            # if query_key:
+            #     query = self._column_expression(model, query, query_key)
+        except SQLAlchemyError as e:
+            aelog.exception(e)
+            raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
+        else:
+            async with self._query_execute(query) as cursor:
+                resp = await cursor.fetchone()
+            return resp.count
+
+    async def execute(self, query, params: Dict) -> int:
+        """
+        插入数据，更新或者删除数据
+        Args:
+            query: SQL的查询字符串或者sqlalchemy表达式
+            params: 执行的参数值,可以是单个对象的字典也可以是多个对象的列表
+        Returns:
+            不确定执行的是什么查询，直接返回ResultProxy实例
+        """
+        params = dict(params) if isinstance(params, MutableMapping) else {}
+        async with await self._execute(query, params, 6) as cursor:
+            return cursor.rowcount
+
+    async def query(self, query, params: Dict = None, size=None, cursor_close=True
+                    ) -> List[RowProxy] or RowProxy or None:
         """
         查询数据，用于复杂的查询
         Args:
             query: SQL的查询字符串或者sqlalchemy表达式
+            size: 查询数据大小, 默认返回所有
+            params: SQL表达式中的参数
+            size: 查询数据大小, 默认返回所有
+            cursor_close: 是否关闭游标，默认关闭，如果多次读取可以改为false，后面关闭的行为交给sqlalchemy处理
+
         Returns:
             不确定执行的是什么查询，直接返回ResultProxy实例
         """
-        try:
-            async with self.aio_engine.acquire() as conn:
-                async with conn.execute(query) as cursor:
-                    resp = await  cursor.fetchall()
-                await conn.execute('commit')
-        except (MySQLError, Error) as err:
-            aelog.exception("Find data failed, {}".format(err))
-            raise HttpError(400, message=self.message[5][self.msg_zh], error=err)
+        params = dict(params) if isinstance(params, MutableMapping) else {}
+        cursor = await self._query_execute(query, params)
+
+        if size is None:
+            resp = await cursor.fetchall()
+        elif size == 1:
+            resp = await cursor.fetchone()
         else:
-            return [dict(val) for val in resp] if resp else None
+            resp = await cursor.fetchmany(size)
 
-    async def insert_one(self, model, *, insert_data: dict):
-        """
-        插入数据
-        Args:
-            model: model
-            insert_data: 值类型
-        Returns:
-            返回插入的条数
-        """
-        return await self._insert_one(model, insert_data)
+        if cursor_close is True:
+            await cursor.close()
 
-    async def find_one(self, model: DeclarativeMeta or list, *, query_key: dict = None, or_query_key: dict = None):
+        return resp
+
+    async def find_one(self, model: DeclarativeMeta or List, *, query_key: Dict = None, ):
         """
         查询单条数据
         Args:
-            model: 查询的model名称
+            model: sqlalchemy中的model或者table
             query_key: 查询model的过滤条件
-            or_query_key: 或查询model的过滤条件
         Returns:
             返回匹配的数据或者None
         """
         model = model if isinstance(model, MutableSequence) else [model]
-        return await self._find_one(model, query_key, or_query_key)
+        return await self._find_one(model, query_key, )
 
-    async def find_data(self, model: DeclarativeMeta or list, *, query_key: dict = None, or_query_key: dict = None,
+    async def find_data(self, model: DeclarativeMeta or List, *, query_key: Dict = None,
                         limit: int = 0, page: int = 1, order: tuple = None):
         """
         插入数据
         Args:
-            model: model
+            model: sqlalchemy中的model或者table
             query_key: 查询表的过滤条件, {"key": {"gt": 3, "lt": 9}}
-            or_query_key: 或查询model的过滤条件,{"key": {"gt": 3, "lt": 9}},{"key": {"eq": [3, 8]}}
             limit: 限制返回的表的条数
             page: 从查询结果中调过指定数量的行
             order: 排序条件
@@ -605,43 +543,81 @@ class AIOMysqlClient(object):
         limit = int(limit)
         skip = (int(page) - 1) * limit
         model = model if isinstance(model, MutableSequence) else [model]
-        return await self._find_data(model, query_key, or_query_key, limit=limit, skip=skip, order=order)
+        return await self._find_data(model, query_key, limit=limit, skip=skip, order=order)
 
-    async def find_count(self, model, *, query_key: dict = None, or_query_key: dict = None):
+    async def find_count(self, model, *, query_key: Dict = None):
         """
         查询单条数据
         Args:
-            model: 查询的model名称
+            model: sqlalchemy中的model或者table
             query_key: 查询model的过滤条件
-            or_query_key: 或查询model的过滤条件
         Returns:
             返回总条数
         """
-        return await self._find_count(model, query_key, or_query_key)
+        return await self._find_count(model, query_key)
 
-    async def update_data(self, model, *, query_key: dict, or_query_key: dict = None, update_data: dict):
+    async def insert_one(self, model, *, insert_data: Dict) -> Tuple[int, str]:
+        """
+        插入数据
+        Args:
+            model: sqlalchemy中的model或者table
+            insert_data: 插入的单条dict类型数据
+        Returns:
+            (插入的条数,插入的ID)
+        """
+        return await self._insert_one(model, insert_data)
+
+    async def insert_many(self, model, *, insert_data: List[Dict]) -> int:
+        """
+        插入多条数据
+
+        eg: User.insert().values([{"name": "test1"}, {"name": "test2"}]
+        Args:
+            model: sqlalchemy中的model或者table
+            insert_data: 插入的多条[dict]数据
+        Returns:
+            插入的条数
+        """
+        return await self._insert_many(model, insert_data)
+
+    async def insert_from_select(self, model, column_names: List, select_query: Select) -> Tuple[int, str]:
+        """
+        插入数据
+        Args:
+            model: sqlalchemy中的model或者table
+            column_names: 字符串列名列表或者Column类列名列表
+            select_query: select表达式
+        Returns:
+            (插入的条数,插入的ID)
+        """
+        if not column_names:
+            raise FuncArgsError("column_names must be provide!")
+        return await self._insert_from_select(model, column_names, select_query)
+
+    async def update_data(self, model, *, query_key: List, update_data: Dict or List) -> int:
         """
         更新数据
+
+        eg: where(User.c.id == bindparam("id")).values({"name": bindparam("name")})
+         await conn.execute(sql, [{"id": 1, "name": "t1"}, {"id": 2, "name": "t2"}]
         Args:
-            model: model
+            model: sqlalchemy中的model或者table
             query_key: 更新的查询条件
-            or_query_key: 或查询model的过滤条件
-            update_data: 值类型
+            update_data: 值类型,可以单个条件更新或者多个数据多个条件更新
         Returns:
             返回更新的条数
         """
-        return await self._update_data(model, query_key, or_query_key, update_data)
+        return await self._update_data(model, query_key, update_data)
 
-    async def delete_data(self, model, *, query_key: dict, or_query_key: dict = None):
+    async def delete_data(self, model, *, query_key: List) -> int:
         """
         更新数据
         Args:
-            model: model
+            model: sqlalchemy中的model或者table
             query_key: 删除的查询条件, 必须有query_key，不允许删除整张表
-            or_query_key: 或查询model的过滤条件
         Returns:
             返回删除的条数
         """
         if not query_key:
             raise FuncArgsError("query_key must be provide!")
-        return await self._delete_data(model, query_key, or_query_key)
+        return await self._delete_data(model, query_key)

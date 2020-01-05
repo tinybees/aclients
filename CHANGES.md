@@ -1,6 +1,11 @@
 ## aclients Changelog
 
 
+###[1.0.1b1] - 2019-12-30
+
+#### Added 
+- 重构aio_mysql_client模块全面向sqlalchemy的写法靠拢,而不再偏向mongodb.
+
 ###[1.0.0b45] - 2019-12-30
 
 #### Added 
