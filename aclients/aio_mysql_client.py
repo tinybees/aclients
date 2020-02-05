@@ -563,7 +563,7 @@ class AIOMysqlClient(object):
             async with self._execute(query, insert_data_, 1) as cursor:
                 return cursor.rowcount
 
-    async def _update_data(self, model, query_key: List, update_data: Dict or List) -> int:
+    async def _update_data(self, model, query_key: List, update_data: Dict or List, bindvalues: Dict = None) -> int:
         """
         更新数据
 
@@ -582,7 +582,12 @@ class AIOMysqlClient(object):
                 update_data_ = {**update_data_, **update_data}
             else:
                 update_data_ = [{**update_data_, **one_data} for one_data in update_data]
-            query = update(model).where(*query_key).values(update_data_)
+
+            query = update(model)
+            for one_clause in query_key:
+                query.where(one_clause)
+            else:
+                query.values(update_data_ if bindvalues is None else bindvalues)
         except SQLAlchemyError as e:
             aelog.exception(e)
             raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
@@ -600,7 +605,9 @@ class AIOMysqlClient(object):
             返回删除的条数
         """
         try:
-            query = delete(model).where(*query_key)
+            query = delete(model)
+            for one_clause in query_key:
+                query.where(one_clause)
         except SQLAlchemyError as e:
             aelog.exception(e)
             raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
@@ -903,7 +910,7 @@ class AIOMysqlClient(object):
             raise FuncArgsError("column_names must be provide!")
         return await self._insert_from_select(model, column_names, select_query)
 
-    async def update_data(self, model, *, query_key: List, update_data: Dict or List) -> int:
+    async def update_data(self, model, *, query_key, update_data: Dict or List, bindvalues: Dict = None) -> int:
         """
         更新数据
 
@@ -916,9 +923,10 @@ class AIOMysqlClient(object):
         Returns:
             返回更新的条数
         """
-        return await self._update_data(model, query_key, update_data)
+        query_key = query_key if isinstance(query_key, list) else [query_key]
+        return await self._update_data(model, query_key, update_data, bindvalues)
 
-    async def delete_data(self, model, *, query_key: List) -> int:
+    async def delete_data(self, model, *, query_key) -> int:
         """
         更新数据
         Args:
@@ -929,4 +937,5 @@ class AIOMysqlClient(object):
         """
         if not query_key:
             raise FuncArgsError("query_key must be provide!")
+        query_key = query_key if isinstance(query_key, list) else [query_key]
         return await self._delete_data(model, query_key)
