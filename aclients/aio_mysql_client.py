@@ -8,7 +8,8 @@
 """
 import asyncio
 import atexit
-from typing import (Dict, List, MutableMapping, MutableSequence, Tuple)
+from math import ceil
+from typing import (Dict, List, MutableMapping, Tuple)
 
 import aelog
 from aiomysql.sa import create_engine
@@ -31,6 +32,220 @@ __all__ = ("AIOMysqlClient", "all_", "any_", "and_", "or_", "bindparam", "select
            "over", "within_group", "label", "case", "cast", "extract", "tuple_", "except_", "except_all", "intersect",
            "intersect_all", "union", "union_all", "exists", "nullsfirst", "nullslast", "asc", "desc", "distinct",
            "type_coerce", "true", "false", "null", "join", "outerjoin", "funcfilter", "func", "not_")
+
+
+class BaseQuery(object):
+    """
+    查询
+    """
+
+    def __init__(self, ):
+        """
+            查询
+        Args:
+
+        """
+        self._whereclause = []
+        self._order_by = []
+        self._group_by = []
+        self._having = []
+        self._distinct = []
+        self._columns = None
+        self._union = None
+        self._union_all = None
+        self._with_hint = None
+
+    def where(self, *whereclause):
+        """return a new select() construct with the given expression added to
+        its WHERE clause, joined to the existing clause via AND, if any.
+
+        """
+
+        self._whereclause.extend(whereclause)
+        return self
+
+    def order_by(self, *clauses):
+        """return a new selectable with the given list of ORDER BY
+        criterion applied.
+
+        The criterion will be appended to any pre-existing ORDER BY
+        criterion.
+
+        """
+
+        self._order_by.extend(clauses)
+        return self
+
+    def group_by(self, *clauses):
+        """return a new selectable with the given list of GROUP BY
+        criterion applied.
+
+        The criterion will be appended to any pre-existing GROUP BY
+        criterion.
+
+        """
+
+        self._group_by.extend(clauses)
+        return self
+
+    def having(self, *having):
+        """return a new select() construct with the given expression added to
+        its HAVING clause, joined to the existing clause via AND, if any.
+
+        """
+        self._having.extend(having)
+
+    def distinct(self, *expr):
+        r"""Return a new select() construct which will apply DISTINCT to its
+        columns clause.
+
+        :param \*expr: optional column expressions.  When present,
+         the PostgreSQL dialect will render a ``DISTINCT ON (<expressions>>)``
+         construct.
+
+        """
+        self._distinct.extend(expr)
+        return self
+
+    def columns(self, columns):
+        r"""Return a new :func:`.select` construct with its columns
+        clause replaced with the given columns.
+
+        This method is exactly equivalent to as if the original
+        :func:`.select` had been called with the given columns
+        clause.   I.e. a statement::
+
+            s = select([table1.c.a, table1.c.b])
+            s = s.with_only_columns([table1.c.b])
+
+        This means that FROM clauses which are only derived
+        from the column list will be discarded if the new column
+        list no longer contains that FROM::
+
+        """
+        self._columns = columns
+        return self
+
+    def union(self, other, **kwargs):
+        """return a SQL UNION of this select() construct against the given
+        selectable."""
+
+        self._union = [other, kwargs]
+        return self
+
+    def union_all(self, other, **kwargs):
+        """return a SQL UNION ALL of this select() construct against the given
+        selectable.
+
+        """
+        self._union_all = [other, kwargs]
+        return self
+
+    def with_hint(self, selectable, text_, dialect_name='*'):
+        r"""Add an indexing or other executional context hint for the given
+        selectable to this :class:`.Select`.
+
+        The text of the hint is rendered in the appropriate
+        location for the database backend in use, relative
+        to the given :class:`.Table` or :class:`.Alias` passed as the
+        ``selectable`` argument. The dialect implementation
+        typically uses Python string substitution syntax
+        with the token ``%(name)s`` to render the name of
+        the table or alias. E.g. when using Oracle, the
+        following::
+
+            select([mytable]).\
+                with_hint(mytable, "index(%(name)s ix_mytable)")
+
+        Would render SQL as::
+
+            select /*+ index(mytable ix_mytable) */ ... from mytable
+
+        The ``dialect_name`` option will limit the rendering of a particular
+        hint to a particular backend. Such as, to add hints for both Oracle
+        and Sybase simultaneously::
+
+            select([mytable]).\
+                with_hint(mytable, "index(%(name)s ix_mytable)", 'oracle').\
+                with_hint(mytable, "WITH INDEX ix_mytable", 'sybase')
+
+        .. seealso::
+
+            :meth:`.Select.with_statement_hint`
+
+        """
+        self._with_hint = [selectable, text_, dialect_name]
+        return self
+
+
+# noinspection PyProtectedMember
+class Pagination(object):
+    """Internal helper class returned by :meth:`BaseQuery.paginate`.  You
+    can also construct it from any other SQLAlchemy query object if you are
+    working with other libraries.  Additionally it is possible to pass `None`
+    as query object in which case the :meth:`prev` and :meth:`next` will
+    no longer work.
+    """
+
+    def __init__(self, db_client, select_query, page, per_page, total, items):
+        #: the unlimited query object that was used to create this
+        #: aiomysqlclient object.
+        self._db_client = db_client
+        #: select query
+        self._select_query = select_query
+        #: the current page number (1 indexed)
+        self.page = page
+        #: the number of items to be displayed on a page.
+        self.per_page = per_page
+        #: the total number of items matching the query
+        self.total = total
+        #: the items for the current page
+        self.items = items
+
+    @property
+    def pages(self):
+        """The total number of pages"""
+        if self.per_page == 0:
+            pages = 0
+        else:
+            pages = int(ceil(self.total / float(self.per_page)))
+        return pages
+
+    async def prev(self, ):
+        """Returns a :class:`Pagination` object for the previous page."""
+        self._select_query.limit(self.per_page)
+        self._select_query.offset((self.page - 1 - 1) * self.per_page)
+        return await self._db_client._find_data(self._select_query)
+
+    @property
+    def prev_num(self):
+        """Number of the previous page."""
+        if not self.has_prev:
+            return None
+        return self.page - 1
+
+    @property
+    def has_prev(self):
+        """True if a previous page exists"""
+        return self.page > 1
+
+    async def next(self, ):
+        """Returns a :class:`Pagination` object for the next page."""
+        self._select_query.limit(self.per_page)
+        self._select_query.offset(self.page - 1 + 1 * self.per_page)
+        return await self._db_client._find_data(self._select_query)
+
+    @property
+    def has_next(self):
+        """True if a next page exists."""
+        return self.page < self.pages
+
+    @property
+    def next_num(self):
+        """Number of the next page"""
+        if not self.has_next:
+            return None
+        return self.page + 1
 
 
 class AIOMysqlClient(object):
@@ -61,6 +276,7 @@ class AIOMysqlClient(object):
         self.pool_size = pool_size
         self.message = kwargs.get("message", {})
         self.use_zh = kwargs.get("use_zh", True)
+        self.max_per_page = kwargs.get("max_per_page", None)
         self.msg_zh = None
 
         if app is not None:
@@ -95,6 +311,7 @@ class AIOMysqlClient(object):
         passwd = passwd if passwd is None else str(passwd)
         self.message = verify_message(mysql_msg, message)
         self.msg_zh = "msg_zh" if use_zh else "msg_en"
+        self.max_per_page = kwargs.get("max_per_page", None) or self.max_per_page
         self.app = app
 
         @app.listener('before_server_start')
@@ -150,6 +367,7 @@ class AIOMysqlClient(object):
         passwd = passwd if passwd is None else str(passwd)
         self.message = verify_message(mysql_msg, message)
         self.msg_zh = "msg_zh" if use_zh else "msg_en"
+        self.max_per_page = kwargs.get("max_per_page", None) or self.max_per_page
         loop = asyncio.get_event_loop()
 
         async def open_connection():
@@ -214,6 +432,17 @@ class AIOMysqlClient(object):
                     update_values[key] = val.onupdate.arg.__wrapped__()
         return update_values
 
+    @property
+    def query(self, ) -> BaseQuery:
+        """
+
+        Args:
+
+        Returns:
+
+        """
+        return BaseQuery()
+
     async def _execute(self, query, params: List or Dict, msg_code: int) -> ResultProxy:
         """
         插入数据，更新或者删除数据
@@ -247,7 +476,7 @@ class AIOMysqlClient(object):
                     await trans.commit()
         return cursor
 
-    async def _query_execute(self, query, params: Dict) -> ResultProxy:
+    async def _query_execute(self, query, params: Dict = None) -> ResultProxy:
         """
         查询数据
         Args:
@@ -258,7 +487,7 @@ class AIOMysqlClient(object):
         """
         async with self.aio_engine.acquire() as conn:
             try:
-                cursor = await conn.execute(query, params)
+                cursor = await conn.execute(query, params or {})
             except (MySQLError, Error) as e:
                 aelog.exception("Find data failed, {}".format(e))
                 raise HttpError(400, message=self.message[4][self.msg_zh])
@@ -394,82 +623,87 @@ class AIOMysqlClient(object):
                         await trans.commit()
             return rowcount
 
-    async def _find_one(self, model: List, query_key: List, ):
+    async def _find_one(self, model: DeclarativeMeta, query: BaseQuery) -> RowProxy or None:
         """
         查询单条数据
         Args:
             model: sqlalchemy中的model或者table
-            query_key: 查询model的过滤条件
+            query: BaseQuery查询类
         Returns:
             返回匹配的数据或者None
         """
         try:
-            query = select(model).where
-            # if query_key:
-            #     query = self._column_expression(model, query, query_key, )
+            query_ = select(model)
+            if query._with_hint:
+                query_.with_hint(*query._with_hint)
+            for one_clause in query._whereclause:
+                query_.append_whereclause(one_clause)
+            if query._order_by:
+                query_.order_by(*query._order_by)
+            if query._distinct:
+                query_.distinct(*query._distinct)
+            if query._columns:
+                query_.with_only_columns(query._columns)
         except SQLAlchemyError as e:
             aelog.exception(e)
             raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
         else:
-            async with self._query_execute(query) as cursor:
-                resp = await cursor.fetchone()
-            return dict(resp) if resp else None
+            cursor = await self._query_execute(query_)
+            return await cursor.first() if cursor.returns_rows else None
 
-    async def _find_data(self, model: List, query_key: dict, limit: int,
-                         skip: int, ):
+    async def _find_data(self, select_query) -> List[RowProxy] or []:
         """
         查询单条数据
         Args:
-            model: sqlalchemy中的model或者table
-            query_key: 查询model的过滤条件
-            limit: 每页条数
-            skip： 需要跳过的条数
-            order: 排序条件
+            select_query: sqlalchemy中的select query
         Returns:
             返回匹配的数据或者None
         """
-        try:
-            query = select(model)
-            # if query_key or or_query_key:
-            #     query = self._column_expression(model, query, query_key, or_query_key)
-            # if order:
-            #     query = query.order_by(desc(order[0])) if order[1] == 1 else query.order_by(order[0])
-            # else:
-            #     model_ = model[0] if isinstance(model, MutableSequence) else model
-            #     if getattr(model_, "id", None) is not None:
-            #         query = query.order_by(asc("id"))
-            if limit:
-                query = query.limit(limit)
-            if skip:
-                query = query.offset(skip)
-        except SQLAlchemyError as e:
-            aelog.exception(e)
-            raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
-        else:
-            async with self._query_execute(query) as cursor:
-                resp = await cursor.fetchall()
-            return [dict(val) for val in resp] if resp else []
+        cursor = await self._query_execute(select_query)
+        return await cursor.fetchall() if cursor.returns_rows else []
 
-    async def _find_count(self, model, query_key: dict):
+    async def _find_count(self, select_query) -> RowProxy:
         """
         查询单条数据
         Args:
-            model: sqlalchemy中的model或者table
-            query_key: 查询model的过滤条件
+            select_query: sqlalchemy中的select query
         Returns:
             返回条数
         """
-        try:
-            query = select([func.count().label("count")]).select_from(model)
-            # if query_key:
-            #     query = self._column_expression(model, query, query_key)
-        except SQLAlchemyError as e:
-            aelog.exception(e)
-            raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
-        else:
-            async with self._query_execute(query) as cursor:
-                resp = await cursor.fetchone()
-            return resp.count
+        cursor = await self._query_execute(select_query)
+        return await cursor.first()
+
+    @staticmethod
+    def gen_query(select_query, query: BaseQuery, *, limit_clause: int = None, offset_clause: int = None):
+        """
+        查询单条数据
+        Args:
+            select_query: sqlalchemy中的select query
+            query: BaseQuery查询类
+            limit_clause: 每页数量
+            offset_clause: 跳转数量
+        Returns:
+            返回条数
+        """
+        if query._with_hint:
+            select_query.with_hint(*query._with_hint)
+        if query._whereclause:
+            for one_clause in query._whereclause:
+                select_query.append_whereclause(one_clause)
+        if query._order_by:
+            select_query.order_by(*query._order_by)
+        if query._group_by:
+            select_query.group_by(*query._group_by)
+            for one_clause in query._having:
+                select_query.append_having(one_clause)
+        if query._distinct:
+            select_query.distinct(*query._distinct)
+        if query._columns:
+            select_query.with_only_columns(query._columns)
+        if limit_clause is not None:
+            select_query.limit(limit_clause)
+        if offset_clause is not None:
+            select_query.offset(offset_clause)
 
     async def execute(self, query, params: Dict) -> int:
         """
@@ -484,8 +718,8 @@ class AIOMysqlClient(object):
         async with await self._execute(query, params, 6) as cursor:
             return cursor.rowcount
 
-    async def query(self, query, params: Dict = None, size=None, cursor_close=True
-                    ) -> List[RowProxy] or RowProxy or None:
+    async def query_execute(self, query, params: Dict = None, size=None, cursor_close=True
+                            ) -> List[RowProxy] or RowProxy or None:
         """
         查询数据，用于复杂的查询
         Args:
@@ -496,65 +730,140 @@ class AIOMysqlClient(object):
             cursor_close: 是否关闭游标，默认关闭，如果多次读取可以改为false，后面关闭的行为交给sqlalchemy处理
 
         Returns:
-            不确定执行的是什么查询，直接返回ResultProxy实例
+            List[RowProxy] or RowProxy or None
         """
         params = dict(params) if isinstance(params, MutableMapping) else {}
         cursor = await self._query_execute(query, params)
 
         if size is None:
-            resp = await cursor.fetchall()
+            resp = await cursor.fetchall() if cursor.returns_rows else []
         elif size == 1:
-            resp = await cursor.fetchone()
+            resp = await cursor.fetchone() if cursor.returns_rows else None
         else:
-            resp = await cursor.fetchmany(size)
+            resp = await cursor.fetchmany(size) if cursor.returns_rows else []
 
         if cursor_close is True:
             await cursor.close()
 
         return resp
 
-    async def find_one(self, model: DeclarativeMeta or List, *, query_key: Dict = None, ):
+    async def find_one(self, model: DeclarativeMeta, *, query: BaseQuery = None) -> RowProxy or None:
         """
         查询单条数据
         Args:
             model: sqlalchemy中的model或者table
-            query_key: 查询model的过滤条件
+            query: BaseQuery查询类
         Returns:
             返回匹配的数据或者None
         """
-        model = model if isinstance(model, MutableSequence) else [model]
-        return await self._find_one(model, query_key, )
+        if not isinstance(model, DeclarativeMeta):
+            raise FuncArgsError("model type error!")
+        query = BaseQuery() if query is None else query
+        return await self._find_one(model, query)
 
-    async def find_data(self, model: DeclarativeMeta or List, *, query_key: Dict = None,
-                        limit: int = 0, page: int = 1, order: tuple = None):
+    async def find_many(self, model: DeclarativeMeta, *, query: BaseQuery = None,
+                        page: int = 1, per_page: int = 20, primary_order=True) -> Pagination:
+        """Returns ``per_page`` items from page ``page``.
+
+        If ``page`` or ``per_page`` are ``None``, they will be retrieved from
+        the request query. If ``max_per_page`` is specified, ``per_page`` will
+        be limited to that value. If there is no request or they aren't in the
+        query, they default to 1 and 20 respectively.
+
+        * No items are found and ``page`` is not 1.
+        * ``page`` is less than 1, or ``per_page`` is negative.
+        * ``page`` or ``per_page`` are not ints.
+        * primary_order: 默认启用主键ID排序的功能，在大数据查询时可以关闭此功能，在90%数据量不大的情况下可以加快分页的速度
+
+        When ``error_out`` is ``False``, ``page`` and ``per_page`` default to
+        1 and 20 respectively.
+
+        Returns a :class:`Pagination` object.
+
+        目前是改造如果limit传递为0，则返回所有的数据，这样业务代码中就不用更改了
+        """
+
+        if self.max_per_page is not None:
+            per_page = min(per_page, self.max_per_page)
+
+        if page < 1:
+            page = 1
+
+        if per_page < 0:
+            per_page = 20
+
+        try:
+            select_query = select(model)
+            # 如果per_page为0,则证明要获取所有的数据，否则还是通常的逻辑
+            if per_page != 0:
+                self.gen_query(select_query, query, limit_clause=per_page, offset_clause=(page - 1) * per_page)
+                # 如果分页获取的时候没有进行排序,并且model中有id字段,则增加用id字段的升序排序
+                # 前提是默认id是主键,因为不排序会有混乱数据,所以从中间件直接解决,业务层不需要关心了
+                # 如果业务层有排序了，则此处不再提供排序功能
+                # 如果遇到大数据量的分页查询问题时，建议关闭此处，然后再基于已有的索引分页
+                if primary_order is True and getattr(model, "id", None) is not None:
+                    select_query.order_by(getattr(model, "id").asc())
+            else:
+                self.gen_query(select_query, query)
+        except SQLAlchemyError as e:
+            aelog.exception(e)
+            raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
+        else:
+            items = await self._find_data(select_query)
+
+        # No need to count if we're on the first page and there are fewer
+        # items than we expected.
+        if page == 1 and len(items) < per_page:
+            total = len(items)
+        else:
+            total_result = await self.find_count(model, query=query)
+            total = total_result.count
+
+        return Pagination(self, select_query, page, per_page, total, items)
+
+    async def find_all(self, model: DeclarativeMeta, *, query: BaseQuery = None) -> List[RowProxy] or []:
         """
         插入数据
         Args:
             model: sqlalchemy中的model或者table
-            query_key: 查询表的过滤条件, {"key": {"gt": 3, "lt": 9}}
-            limit: 限制返回的表的条数
-            page: 从查询结果中调过指定数量的行
-            order: 排序条件
+            query: BaseQuery查询类
         Returns:
 
         """
-        if order and not isinstance(order, (list, tuple)):
-            raise FuncArgsError("order must be tuple or list!")
-        limit = int(limit)
-        skip = (int(page) - 1) * limit
-        model = model if isinstance(model, MutableSequence) else [model]
-        return await self._find_data(model, query_key, limit=limit, skip=skip, order=order)
+        if not isinstance(model, DeclarativeMeta):
+            raise FuncArgsError("model type error!")
+        query = BaseQuery() if query is None else query
 
-    async def find_count(self, model, *, query_key: Dict = None):
+        try:
+            select_query = select(model)
+            self.gen_query(select_query, query)
+        except SQLAlchemyError as e:
+            aelog.exception(e)
+            raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
+        else:
+            return await self._find_data(select_query)
+
+    async def find_count(self, model: DeclarativeMeta, *, query: BaseQuery = None) -> RowProxy:
         """
         查询单条数据
         Args:
             model: sqlalchemy中的model或者table
-            query_key: 查询model的过滤条件
+            query: BaseQuery查询类
         Returns:
             返回总条数
         """
-        return await self._find_count(model, query_key)
+        if not isinstance(model, DeclarativeMeta):
+            raise FuncArgsError("model type error!")
+        query = BaseQuery() if query is None else query
+
+        try:
+            select_query = select([func.count().label("count")]).select_from(model)
+            self.gen_query(select_query, query)
+        except SQLAlchemyError as e:
+            aelog.exception(e)
+            raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
+        else:
+            return await self._find_count(select_query)
 
     async def insert_one(self, model, *, insert_data: Dict) -> Tuple[int, str]:
         """
