@@ -51,7 +51,7 @@ class BaseQuery(object):
         self._group_by: List = []
         self._having: List = []
         self._distinct: List = []
-        self._columns: List = None
+        self._columns: List = []
         self._union: List = None
         self._union_all: List = None
         self._with_hint: List = None
@@ -125,7 +125,7 @@ class BaseQuery(object):
         list no longer contains that FROM::
 
         """
-        self._columns = columns
+        self._columns.extend(columns)
         return self
 
     def union(self, other, **kwargs):
@@ -648,7 +648,7 @@ class AIOMysqlClient(object):
             返回匹配的数据或者None
         """
         try:
-            select_query = select([model] if query._columns is None else query._columns)
+            select_query = select([model] if not query._columns else query._columns)
             if query._with_hint:
                 select_query.with_hint(*query._with_hint)
             for one_clause in query._whereclause:
@@ -806,7 +806,7 @@ class AIOMysqlClient(object):
             per_page = 20
 
         try:
-            select_query = select([model] if query._columns is None else query._columns)
+            select_query = select([model] if not query._columns else query._columns)
             # 如果per_page为0,则证明要获取所有的数据，否则还是通常的逻辑
             if per_page != 0:
                 self.gen_query(select_query, query, limit_clause=per_page, offset_clause=(page - 1) * per_page)
@@ -848,7 +848,7 @@ class AIOMysqlClient(object):
         query = BaseQuery() if query is None else query
 
         try:
-            select_query = select([model] if query._columns is None else query._columns)
+            select_query = select([model] if not query._columns else query._columns)
             self.gen_query(select_query, query)
         except SQLAlchemyError as e:
             aelog.exception(e)
