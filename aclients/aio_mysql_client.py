@@ -109,7 +109,7 @@ class BaseQuery(object):
         self._distinct.extend(expr)
         return self
 
-    def columns(self, columns):
+    def columns(self, *columns):
         r"""Return a new :func:`.select` construct with its columns
         clause replaced with the given columns.
 
@@ -648,22 +648,22 @@ class AIOMysqlClient(object):
             返回匹配的数据或者None
         """
         try:
-            query_ = select([model])
+            select_query = select([model] if query._columns is None else query._columns)
             if query._with_hint:
-                query_.with_hint(*query._with_hint)
+                select_query.with_hint(*query._with_hint)
             for one_clause in query._whereclause:
-                query_.append_whereclause(one_clause)
+                select_query.append_whereclause(one_clause)
             if query._order_by:
-                query_.order_by(*query._order_by)
+                select_query.order_by(*query._order_by)
             if query._distinct:
-                query_.distinct(*query._distinct)
+                select_query.distinct(*query._distinct)
             if query._columns:
-                query_.with_only_columns(query._columns)
+                select_query.with_only_columns(query._columns)
         except SQLAlchemyError as e:
             aelog.exception(e)
             raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
         else:
-            cursor = await self._query_execute(query_)
+            cursor = await self._query_execute(select_query)
             return await cursor.first() if cursor.returns_rows else None
 
     async def _find_data(self, select_query) -> List[RowProxy] or []:
@@ -713,8 +713,6 @@ class AIOMysqlClient(object):
                 select_query.append_having(one_clause)
         if query._distinct:
             select_query.distinct(*query._distinct)
-        if query._columns:
-            select_query.with_only_columns(query._columns)
         if limit_clause is not None:
             select_query.limit(limit_clause)
         if offset_clause is not None:
@@ -808,7 +806,7 @@ class AIOMysqlClient(object):
             per_page = 20
 
         try:
-            select_query = select([model])
+            select_query = select([model] if query._columns is None else query._columns)
             # 如果per_page为0,则证明要获取所有的数据，否则还是通常的逻辑
             if per_page != 0:
                 self.gen_query(select_query, query, limit_clause=per_page, offset_clause=(page - 1) * per_page)
@@ -850,7 +848,7 @@ class AIOMysqlClient(object):
         query = BaseQuery() if query is None else query
 
         try:
-            select_query = select([model])
+            select_query = select([model] if query._columns is None else query._columns)
             self.gen_query(select_query, query)
         except SQLAlchemyError as e:
             aelog.exception(e)
