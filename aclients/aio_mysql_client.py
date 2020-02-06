@@ -648,7 +648,7 @@ class AIOMysqlClient(object):
             返回匹配的数据或者None
         """
         try:
-            query_ = select(model)
+            query_ = select([model])
             if query._with_hint:
                 query_.with_hint(*query._with_hint)
             for one_clause in query._whereclause:
@@ -808,7 +808,7 @@ class AIOMysqlClient(object):
             per_page = 20
 
         try:
-            select_query = select(model)
+            select_query = select([model])
             # 如果per_page为0,则证明要获取所有的数据，否则还是通常的逻辑
             if per_page != 0:
                 self.gen_query(select_query, query, limit_clause=per_page, offset_clause=(page - 1) * per_page)
@@ -850,7 +850,7 @@ class AIOMysqlClient(object):
         query = BaseQuery() if query is None else query
 
         try:
-            select_query = select(model)
+            select_query = select([model])
             self.gen_query(select_query, query)
         except SQLAlchemyError as e:
             aelog.exception(e)
