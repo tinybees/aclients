@@ -12,12 +12,13 @@ from math import ceil
 from typing import (Dict, List, MutableMapping, Tuple)
 
 import aelog
+import sqlalchemy as sa
 from aiomysql.sa import create_engine
 from aiomysql.sa.exc import Error
 from aiomysql.sa.result import ResultProxy, RowProxy
 from pymysql.err import IntegrityError, MySQLError
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.declarative import DeclarativeMeta
+from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.sql import (Select, all_, and_, any_, asc, bindparam, case, cast, column, delete, desc, distinct,
                             except_, except_all, exists, extract, false, func, funcfilter, insert, intersect,
@@ -26,7 +27,7 @@ from sqlalchemy.sql import (Select, all_, and_, any_, asc, bindparam, case, cast
 
 from .err_msg import mysql_msg
 from .exceptions import FuncArgsError, HttpError, MysqlDuplicateKeyError, MysqlError, QueryArgsError
-from .utils import verify_message
+from .utils import gen_class_name, verify_message
 
 __all__ = ("AIOMysqlClient", "all_", "any_", "and_", "or_", "bindparam", "select", "text", "table", "column",
            "over", "within_group", "label", "case", "cast", "extract", "tuple_", "except_", "except_all", "intersect",
@@ -100,7 +101,7 @@ class BaseQuery(object):
         r"""Return a new select() construct which will apply DISTINCT to its
         columns clause.
 
-        :param \*expr: optional column expressions.  When present,
+        :param expr: optional column expressions.  When present,
          the PostgreSQL dialect will render a ``DISTINCT ON (<expressions>>)``
          construct.
 
@@ -258,6 +259,7 @@ class AIOMysqlClient(object):
     """
     MySQL异步操作指南
     """
+    model = declarative_base()
 
     def __init__(self, app=None, *, username="root", passwd=None, host="127.0.0.1", port=3306, dbname=None,
                  pool_size=50, **kwargs):
@@ -945,3 +947,45 @@ class AIOMysqlClient(object):
             raise FuncArgsError("query_key must be provide!")
         query = query if isinstance(query, BaseQuery) else BaseQuery()
         return await self._delete_data(model, query)
+
+    def gen_model(self, model_cls, suffix: str = None, **kwargs):
+        """
+        用于根据现有的model生成新的model类
+
+        主要用于分表的查询和插入
+        Args:
+            model_cls: 要生成分表的model类
+            suffix: 新的model类名的后缀
+            kwargs: 其他的参数
+        Returns:
+
+        """
+        if kwargs:
+            aelog.info(kwargs)
+        if not issubclass(model_cls, DeclarativeMeta):
+            raise ValueError("model_cls must be db.Model type.")
+
+        table_name = f"{getattr(model_cls, '__tablename__', model_cls.__name__)}_{suffix}"
+        class_name = f"{gen_class_name(table_name)}Model"
+        if getattr(model_cls, "_cache_class", None) is None:
+            setattr(model_cls, "_cache_class", {})
+
+        model_cls_ = getattr(model_cls, "_cache_class").get(class_name, None)
+        if model_cls_ is None:
+            model_fields = {}
+            for attr_name, field in model_cls.__dict__.items():
+                if isinstance(field, InstrumentedAttribute) and not attr_name.startswith("_"):
+                    model_fields[attr_name] = sa.Column(
+                        type_=field.type, primary_key=field.primary_key, index=field.index, nullable=field.nullable,
+                        default=field.default, onupdate=field.onupdate, unique=field.unique,
+                        autoincrement=field.autoincrement, doc=field.doc)
+            model_cls_ = type(class_name, (self.model,), {
+                "__doc__": model_cls.__doc__,
+                "__table_args__ ": getattr(
+                    model_cls, "__table_args__", None) or {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4'},
+                "__tablename__": table_name,
+                "__module__": model_cls.__module__,
+                **model_fields})
+            getattr(model_cls, "_cache_class")[class_name] = model_cls_
+
+        return model_cls_
