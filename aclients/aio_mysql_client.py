@@ -45,15 +45,16 @@ class BaseQuery(object):
         Args:
 
         """
-        self._whereclause = []
-        self._order_by = []
-        self._group_by = []
-        self._having = []
-        self._distinct = []
-        self._columns = None
-        self._union = None
-        self._union_all = None
-        self._with_hint = None
+        self._whereclause: List = []
+        self._order_by: List = []
+        self._group_by: List = []
+        self._having: List = []
+        self._distinct: List = []
+        self._columns: List = None
+        self._union: List = None
+        self._union_all: List = None
+        self._with_hint: List = None
+        self._bind_values: Dict = None
 
     def where(self, *whereclause):
         """return a new select() construct with the given expression added to
@@ -175,6 +176,11 @@ class BaseQuery(object):
 
         """
         self._with_hint = [selectable, text_, dialect_name]
+        return self
+
+    def values(self, **kwargs):
+        r"""specify a fixed VALUES clause for an SET clause for an UPDATE."""
+        self._bind_values = kwargs
         return self
 
 
@@ -563,7 +569,7 @@ class AIOMysqlClient(object):
             async with self._execute(query, insert_data_, 1) as cursor:
                 return cursor.rowcount
 
-    async def _update_data(self, model, query_key: List, update_data: Dict or List, bindvalues: Dict = None) -> int:
+    async def _update_data(self, model, query: BaseQuery, update_data: Dict or List) -> int:
         """
         更新数据
 
@@ -571,7 +577,7 @@ class AIOMysqlClient(object):
          await conn.execute(sql, [{"id": 1, "name": "t1"}, {"id": 2, "name": "t2"}]
         Args:
             model: sqlalchemy中的model或者table
-            query_key: 更新的查询条件
+            query: 更新的BaseQuery查询类
             update_data: 值类型
         Returns:
             返回更新的条数
@@ -583,31 +589,31 @@ class AIOMysqlClient(object):
             else:
                 update_data_ = [{**update_data_, **one_data} for one_data in update_data]
 
-            query = update(model)
-            for one_clause in query_key:
-                query.where(one_clause)
+            select_query = update(model)
+            for one_clause in query._whereclause:
+                select_query.where(one_clause)
             else:
-                query.values(update_data_ if bindvalues is None else bindvalues)
+                select_query.values(update_data_ if query._bind_values is None else query._bind_values)
         except SQLAlchemyError as e:
             aelog.exception(e)
             raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
         else:
-            async with await self._execute(query, update_data_, 2) as cursor:
+            async with await self._execute(select_query, update_data_, 2) as cursor:
                 return cursor.rowcount
 
-    async def _delete_data(self, model, query_key: List) -> int:
+    async def _delete_data(self, model, query: BaseQuery) -> int:
         """
         更新数据
         Args:
             model: sqlalchemy中的model或者table
-            query_key: 删除的查询条件
+            query: 删除的BaseQuery查询类
         Returns:
             返回删除的条数
         """
         try:
-            query = delete(model)
-            for one_clause in query_key:
-                query.where(one_clause)
+            select_query = delete(model)
+            for one_clause in query._whereclause:
+                select_query.where(one_clause)
         except SQLAlchemyError as e:
             aelog.exception(e)
             raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
@@ -616,7 +622,7 @@ class AIOMysqlClient(object):
             async with self.aio_engine.acquire() as conn:
                 async with conn.begin() as trans:
                     try:
-                        async with conn.execute(query) as cursor:
+                        async with conn.execute(select_query) as cursor:
                             rowcount = cursor.rowcount
                     except (MySQLError, Error) as e:
                         await trans.rollback()
@@ -910,7 +916,7 @@ class AIOMysqlClient(object):
             raise FuncArgsError("column_names must be provide!")
         return await self._insert_from_select(model, column_names, select_query)
 
-    async def update_data(self, model, *, query_key, update_data: Dict or List, bindvalues: Dict = None) -> int:
+    async def update_data(self, model, *, query: BaseQuery, update_data: Dict or List) -> int:
         """
         更新数据
 
@@ -918,24 +924,24 @@ class AIOMysqlClient(object):
          await conn.execute(sql, [{"id": 1, "name": "t1"}, {"id": 2, "name": "t2"}]
         Args:
             model: sqlalchemy中的model或者table
-            query_key: 更新的查询条件
+            query: 更新的BaseQuery查询类
             update_data: 值类型,可以单个条件更新或者多个数据多个条件更新
         Returns:
             返回更新的条数
         """
-        query_key = query_key if isinstance(query_key, list) else [query_key]
-        return await self._update_data(model, query_key, update_data, bindvalues)
+        query = query if isinstance(query, BaseQuery) else BaseQuery()
+        return await self._update_data(model, query, update_data)
 
-    async def delete_data(self, model, *, query_key) -> int:
+    async def delete_data(self, model, *, query: BaseQuery) -> int:
         """
         更新数据
         Args:
             model: sqlalchemy中的model或者table
-            query_key: 删除的查询条件, 必须有query_key，不允许删除整张表
+            query: 删除的BaseQuery查询类, 必须有query，不允许删除整张表
         Returns:
             返回删除的条数
         """
-        if not query_key:
+        if not query:
             raise FuncArgsError("query_key must be provide!")
-        query_key = query_key if isinstance(query_key, list) else [query_key]
-        return await self._delete_data(model, query_key)
+        query = query if isinstance(query, BaseQuery) else BaseQuery()
+        return await self._delete_data(model, query)
