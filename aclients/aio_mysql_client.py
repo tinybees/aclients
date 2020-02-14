@@ -26,7 +26,7 @@ from sqlalchemy.sql import (Select, all_, and_, any_, asc, bindparam, case, cast
                             table, text, true, tuple_, type_coerce, union, union_all, update, within_group)
 
 from .err_msg import mysql_msg
-from .exceptions import FuncArgsError, HttpError, MysqlDuplicateKeyError, MysqlError, QueryArgsError
+from .exceptions import ConfigError, FuncArgsError, HttpError, MysqlDuplicateKeyError, MysqlError, QueryArgsError
 from .utils import gen_class_name, verify_message
 
 __all__ = ("AIOMysqlClient", "all_", "any_", "and_", "or_", "bindparam", "select", "text", "table", "column",
@@ -255,155 +255,21 @@ class Pagination(object):
         return self.page + 1
 
 
-class AIOMysqlClient(object):
+class Session(object):
     """
-    MySQL异步操作指南
+    query session
     """
-    model = declarative_base()
 
-    def __init__(self, app=None, *, username="root", passwd=None, host="127.0.0.1", port=3306, dbname=None,
-                 pool_size=50, **kwargs):
+    def __init__(self, aio_engine, message, msg_zh, max_per_page):
         """
-        mysql 非阻塞工具类
+            query session
         Args:
-            app: app应用
-            host:mysql host
-            port:mysql port
-            dbname: database name
-            username: mysql user
-            passwd: mysql password
-            pool_size: mysql pool size
-        """
-        self.app = app
-        self.aio_engine = None
-        self.username = username
-        self.passwd = passwd
-        self.host = host
-        self.port = port
-        self.dbname = dbname
-        self.pool_size = pool_size
-        self.message = kwargs.get("message", {})
-        self.use_zh = kwargs.get("use_zh", True)
-        self.max_per_page = kwargs.get("max_per_page", None)
-        self.msg_zh = None
-
-        if app is not None:
-            self.init_app(app, username=self.username, passwd=self.passwd, host=self.host, port=self.port,
-                          dbname=self.dbname, pool_size=self.pool_size, **kwargs)
-
-    def init_app(self, app, *, username=None, passwd=None, host=None, port=None, dbname=None,
-                 pool_size=None, **kwargs):
-        """
-        mysql 实例初始化
-        Args:
-            app: app应用
-            host:mysql host
-            port:mysql port
-            dbname: database name
-            username: mysql user
-            passwd: mysql password
-            pool_size: mysql pool size
-
-        Returns:
 
         """
-        username = username or app.config.get("ACLIENTS_MYSQL_USERNAME", None) or self.username
-        passwd = passwd or app.config.get("ACLIENTS_MYSQL_PASSWD", None) or self.passwd
-        host = host or app.config.get("ACLIENTS_MYSQL_HOST", None) or self.host
-        port = port or app.config.get("ACLIENTS_MYSQL_PORT", None) or self.port
-        dbname = dbname or app.config.get("ACLIENTS_MYSQL_DBNAME", None) or self.dbname
-        pool_size = pool_size or app.config.get("ACLIENTS_MYSQL_POOL_SIZE", None) or self.pool_size
-        message = kwargs.get("message") or app.config.get("ACLIENTS_MYSQL_MESSAGE", None) or self.message
-        use_zh = kwargs.get("use_zh") or app.config.get("ACLIENTS_MYSQL_MSGZH", None) or self.use_zh
-
-        passwd = passwd if passwd is None else str(passwd)
-        self.message = verify_message(mysql_msg, message)
-        self.msg_zh = "msg_zh" if use_zh else "msg_en"
-        self.max_per_page = kwargs.get("max_per_page", None) or self.max_per_page
-        self.app = app
-
-        @app.listener('before_server_start')
-        async def open_connection(app_, loop):
-            """
-
-            Args:
-
-            Returns:
-
-            """
-            # engine
-            self.aio_engine = await create_engine(user=username, db=dbname, host=host, port=port,
-                                                  password=passwd, maxsize=pool_size, charset="utf8mb4")
-
-        @app.listener('after_server_stop')
-        async def close_connection(app_, loop):
-            """
-
-            Args:
-
-            Returns:
-
-            """
-            if self.aio_engine:
-                self.aio_engine.close()
-                await self.aio_engine.wait_closed()
-
-    def init_engine(self, *, username="root", passwd=None, host="127.0.0.1", port=3306, dbname=None,
-                    pool_size=50, **kwargs):
-        """
-        mysql 实例初始化
-        Args:
-            host:mysql host
-            port:mysql port
-            dbname: database name
-            username: mysql user
-            passwd: mysql password
-            pool_size: mysql pool size
-
-        Returns:
-
-        """
-        username = username or self.username
-        passwd = passwd or self.passwd
-        host = host or self.host
-        port = port or self.port
-        dbname = dbname or self.dbname
-        pool_size = pool_size or self.pool_size
-        message = kwargs.get("message") or self.message
-        use_zh = kwargs.get("use_zh") or self.use_zh
-
-        passwd = passwd if passwd is None else str(passwd)
-        self.message = verify_message(mysql_msg, message)
-        self.msg_zh = "msg_zh" if use_zh else "msg_en"
-        self.max_per_page = kwargs.get("max_per_page", None) or self.max_per_page
-        loop = asyncio.get_event_loop()
-
-        async def open_connection():
-            """
-
-            Args:
-
-            Returns:
-
-            """
-            # engine
-            self.aio_engine = await create_engine(user=username, db=dbname, host=host, port=port,
-                                                  password=passwd, maxsize=pool_size, charset="utf8")
-
-        async def close_connection():
-            """
-
-            Args:
-
-            Returns:
-
-            """
-            if self.aio_engine:
-                self.aio_engine.close()
-                await self.aio_engine.wait_closed()
-
-        loop.run_until_complete(open_connection())
-        atexit.register(lambda: loop.run_until_complete(close_connection()))
+        self.aio_engine = aio_engine
+        self.message = message
+        self.msg_zh = msg_zh
+        self.max_per_page = max_per_page
 
     @staticmethod
     def _get_model_default_value(model) -> Dict:
@@ -439,17 +305,6 @@ class AIOMysqlClient(object):
                 if val.onupdate and val.onupdate.is_callable:
                     update_values[key] = val.onupdate.arg.__wrapped__()
         return update_values
-
-    @property
-    def query(self, ) -> BaseQuery:
-        """
-
-        Args:
-
-        Returns:
-
-        """
-        return BaseQuery()
 
     async def _execute(self, query, params: List or Dict, msg_code: int) -> ResultProxy:
         """
@@ -945,6 +800,260 @@ class AIOMysqlClient(object):
             raise FuncArgsError("query_key must be provide!")
         query = query if isinstance(query, BaseQuery) else BaseQuery()
         return await self._delete_data(model, query)
+
+
+class AIOMysqlClient(object):
+    """
+    MySQL异步操作指南
+    """
+    model = declarative_base()
+
+    def __init__(self, app=None, *, username="root", passwd=None, host="127.0.0.1", port=3306, dbname=None,
+                 pool_size=10, **kwargs):
+        """
+        mysql 非阻塞工具类
+        Args:
+            app: app应用
+            host:mysql host
+            port:mysql port
+            dbname: database name
+            username: mysql user
+            passwd: mysql password
+            pool_size: mysql pool size
+            pool_recycle: pool recycle time, type int
+            aclients_binds: binds config, eg:{"first":{"aclients_host":"127.0.0.1",
+                                                        "aclients_port":3306,
+                                                        "aclients_username":"root",
+                                                        "aclients_passwd":"",
+                                                        "aclients_dbname":"dbname",
+                                                        "aclients_pool_size":10}}
+        """
+        self.app = app
+        self.engine_pool = {}  # engine pool
+        self.session_pool = {}  # session pool
+        # default bind connection
+        self.username = username
+        self.passwd = passwd
+        self.host = host
+        self.port = port
+        self.dbname = dbname
+        self.pool_size = pool_size
+        # other info
+        self.pool_recycle = kwargs.get("pool_recycle", 3600)  # free close time
+        self.charset = "utf8mb4"
+        self.aclients_binds: Dict = kwargs.get("aclients_binds")  # binds config
+        self.message = kwargs.get("message", {})
+        self.use_zh = kwargs.get("use_zh", True)
+        self.max_per_page = kwargs.get("max_per_page", None)
+        self.msg_zh = None
+
+        if app is not None:
+            self.init_app(app, username=self.username, passwd=self.passwd, host=self.host, port=self.port,
+                          dbname=self.dbname, pool_size=self.pool_size, **kwargs)
+
+    def init_app(self, app, *, username=None, passwd=None, host=None, port=None, dbname=None,
+                 pool_size=None, **kwargs):
+        """
+        mysql 实例初始化
+        Args:
+            app: app应用
+            host:mysql host
+            port:mysql port
+            dbname: database name
+            username: mysql user
+            passwd: mysql password
+            pool_size: mysql pool size
+
+        Returns:
+
+        """
+        username = username or app.config.get("ACLIENTS_USERNAME", None) or self.username
+        passwd = passwd or app.config.get("ACLIENTS_PASSWD", None) or self.passwd
+        host = host or app.config.get("ACLIENTS_HOST", None) or self.host
+        port = port or app.config.get("ACLIENTS_PORT", None) or self.port
+        dbname = dbname or app.config.get("ACLIENTS_DBNAME", None) or self.dbname
+        self.pool_size = pool_size or app.config.get("ACLIENTS_POOL_SIZE", None) or self.pool_size
+
+        self.pool_recycle = kwargs.get("pool_recycle") or app.config.get(
+            "ACLIENTS_POOL_RECYCLE", None) or self.pool_recycle
+
+        message = kwargs.get("message") or app.config.get("ACLIENTS_MESSAGE", None) or self.message
+        use_zh = kwargs.get("use_zh") or app.config.get("ACLIENTS_MSGZH", None) or self.use_zh
+
+        self.aclients_binds = kwargs.get("aclients_binds") or app.config.get(
+            "ACLIENTS_BINDS", None) or self.aclients_binds
+        self.verify_binds()
+
+        passwd = passwd if passwd is None else str(passwd)
+        self.message = verify_message(mysql_msg, message)
+        self.msg_zh = "msg_zh" if use_zh else "msg_en"
+        self.max_per_page = kwargs.get("max_per_page", None) or self.max_per_page
+        self.app = app
+
+        @app.listener('before_server_start')
+        async def open_connection(app_, loop):
+            """
+
+            Args:
+
+            Returns:
+
+            """
+            # engine
+            self.engine_pool[None] = await create_engine(
+                user=username, db=dbname, host=host, port=port, password=passwd, maxsize=self.pool_size,
+                pool_recycle=self.pool_recycle, charset=self.charset)
+
+        @app.listener('after_server_stop')
+        async def close_connection(app_, loop):
+            """
+
+            Args:
+
+            Returns:
+
+            """
+            tasks = []
+            for _, aio_engine in self.engine_pool.items():
+                aio_engine.close()
+                tasks.append(asyncio.ensure_future(aio_engine.wait_closed()))
+            await asyncio.wait(tasks)
+
+    def init_engine(self, *, username="root", passwd=None, host="127.0.0.1", port=3306, dbname=None,
+                    pool_size=50, **kwargs):
+        """
+        mysql 实例初始化
+        Args:
+            host:mysql host
+            port:mysql port
+            dbname: database name
+            username: mysql user
+            passwd: mysql password
+            pool_size: mysql pool size
+
+        Returns:
+
+        """
+        username = username or self.username
+        passwd = passwd or self.passwd
+        host = host or self.host
+        port = port or self.port
+        dbname = dbname or self.dbname
+        self.pool_size = pool_size or self.pool_size
+
+        self.pool_recycle = kwargs.get("pool_recycle") or self.pool_recycle
+
+        message = kwargs.get("message") or self.message
+        use_zh = kwargs.get("use_zh") or self.use_zh
+
+        self.aclients_binds = kwargs.get("aclients_binds") or self.aclients_binds
+        self.verify_binds()
+
+        passwd = passwd if passwd is None else str(passwd)
+        self.message = verify_message(mysql_msg, message)
+        self.msg_zh = "msg_zh" if use_zh else "msg_en"
+        self.max_per_page = kwargs.get("max_per_page", None) or self.max_per_page
+        loop = asyncio.get_event_loop()
+
+        async def open_connection():
+            """
+
+            Args:
+
+            Returns:
+
+            """
+            # engine
+            self.engine_pool[None] = await create_engine(
+                host=host, port=port, user=username, password=passwd, db=dbname, maxsize=self.pool_size,
+                pool_recycle=self.pool_recycle, charset=self.charset)
+
+        async def close_connection():
+            """
+
+            Args:
+
+            Returns:
+
+            """
+            tasks = []
+            for _, aio_engine in self.engine_pool.items():
+                aio_engine.close()
+                tasks.append(asyncio.ensure_future(aio_engine.wait_closed(), loop=loop))
+            await asyncio.wait(tasks)
+
+        loop.run_until_complete(open_connection())
+        atexit.register(lambda: loop.run_until_complete(close_connection()))
+
+    def verify_binds(self, ):
+        """
+        校验aclients_binds
+        Args:
+
+        Returns:
+
+        """
+        if self.aclients_binds:
+            if not isinstance(self.aclients_binds, dict):
+                raise TypeError("aclients_binds type error, must be Dict.")
+            for bind_name, bind in self.aclients_binds.items():
+                if not isinstance(bind, dict):
+                    raise TypeError(f"aclients_binds config {bind_name} type error, must be Dict.")
+                missing_items = []
+                for item in ["aclients_host", "aclients_port", "aclients_username", "aclients_passwd",
+                             "aclients_dbname"]:
+                    if item not in bind:
+                        missing_items.append(item)
+                if missing_items:
+                    raise ConfigError(f"aclients_binds config {bind_name} error, "
+                                      f"missing {' '.join(missing_items)} config item.")
+
+    @property
+    def query(self, ) -> BaseQuery:
+        """
+
+        Args:
+
+        Returns:
+
+        """
+        return BaseQuery()
+
+    @property
+    def session(self, ) -> Session:
+        """
+        session default bind
+        Args:
+
+        Returns:
+
+        """
+        if None not in self.engine_pool:
+            raise ValueError("Default bind is not exist.")
+        if None not in self.session_pool:
+            self.session_pool[None] = Session(self.engine_pool[None], self.message, self.msg_zh, self.max_per_page)
+        return self.session_pool[None]
+
+    def gen_session(self, bind) -> Session:
+        """
+        session bind
+        Args:
+            bind: engine pool one of connection
+        Returns:
+
+        """
+        if bind not in self.aclients_binds:
+            raise ValueError("bind is not exist, please config it in the ACLIENTS_BINDS.")
+        if bind not in self.engine_pool:
+            bind_conf: Dict = self.aclients_binds[bind]
+            self.engine_pool[bind] = asyncio.get_event_loop().run_until_complete(create_engine(
+                host=bind_conf.get("aclients_host"), port=bind_conf.get("aclients_port"),
+                user=bind_conf.get("aclients_username"), password=bind_conf.get("aclients_passwd"),
+                db=bind_conf.get("aclients_dbname"), maxsize=bind_conf.get("aclients_pool_size") or self.pool_size,
+                pool_recycle=self.pool_recycle, charset=self.charset))
+        if None not in self.session_pool:
+            self.session_pool[bind] = Session(self.engine_pool[bind], self.message, self.msg_zh, self.max_per_page)
+        return self.session_pool[bind]
 
     def gen_model(self, model_cls, suffix: str = None, **kwargs):
         """

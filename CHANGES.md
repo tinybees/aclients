@@ -1,10 +1,21 @@
 ## aclients Changelog
 
 
-###[1.0.1b1] - 2019-12-30
+###[1.0.1b1] - 2020-2-14
 
 #### Added 
-- 重构aio_mysql_client模块全面向sqlalchemy的写法靠拢,而不再偏向mongodb.
+- 重构aio_mysql_client模块query查询向sqlalchemy的写法靠拢,而不再偏向mongodb,方便熟悉sqlalchemy的同时快速上手.
+- 重构aio_mysql_client模块所有的CRUD功能全部使用query查询
+- 增加Pagination类对于分页查询更简单，也更容易上手(sqlalchemy的写法)
+- 增加生成分表model功能，使得分表的使用简单高效
+- 增加多库多session的同时切换使用功能，提供对访问多个库的支持功能
+- 优化应用停止时并发关闭所有的数据库连接
+- session增加query_execute和execute做区分,并且query_execute返回值都为RowProxy相关
+- session增加insert_from_select从查询直接insert的功能
+- session分页查询find_many增加默认按照id升序排序的功能，可关闭
+- 配置增加pool_recycle回旋关闭连接功能
+- 配置增加aclients_binds用于多库的配置,并且增加配置校验功能
+- 其他优化
 
 ###[1.0.0b45] - 2019-12-30
 
