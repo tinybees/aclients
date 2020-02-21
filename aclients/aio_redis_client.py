@@ -8,13 +8,13 @@
 """
 import atexit
 import secrets
-import ujson
 import uuid
 from collections import MutableMapping
 from typing import Dict
 
 import aelog
 import aredis
+import ujson
 from aredis import RedisError
 
 from .exceptions import RedisClientError
@@ -174,16 +174,7 @@ class AIORedisClient(object):
         Returns:
 
         """
-        session_data = dict(vars(session))
-        # 是否对每个键值进行dump
-        if dump_responses:
-            hash_data = {}
-            for hash_key, hash_val in session_data.items():
-                if not isinstance(hash_val, str):
-                    with ignore_error():
-                        hash_val = ujson.dumps(hash_val)
-                hash_data[hash_key] = hash_val
-            session_data = hash_data
+        session_data = await self.response_dumps(dump_responses, session)
 
         try:
             if not await self.redis_db.hmset(session_data["session_id"], session_data):
@@ -206,6 +197,20 @@ class AIORedisClient(object):
             await self.save_update_hash_data(self._account_key, field_name=session.account_id,
                                              hash_data=session.session_id, ex=LONG_EXPIRED)
             return session.session_id
+
+    @staticmethod
+    async def response_dumps(dump_responses: bool, session: Session):
+        session_data = dict(vars(session))
+        # 是否对每个键值进行dump
+        if dump_responses:
+            hash_data = {}
+            for hash_key, hash_val in session_data.items():
+                if not isinstance(hash_val, str):
+                    with ignore_error():
+                        hash_val = ujson.dumps(hash_val)
+                hash_data[hash_key] = hash_val
+            session_data = hash_data
+        return session_data
 
     async def delete_session(self, session_id, delete_key: bool = True):
         """
@@ -252,16 +257,7 @@ class AIORedisClient(object):
         Returns:
 
         """
-        session_data = dict(vars(session))
-        # 是否对每个键值进行dump
-        if dump_responses:
-            hash_data = {}
-            for hash_key, hash_val in session_data.items():
-                if not isinstance(hash_val, str):
-                    with ignore_error():
-                        hash_val = ujson.dumps(hash_val)
-                hash_data[hash_key] = hash_val
-            session_data = hash_data
+        session_data = await self.response_dumps(dump_responses, session)
 
         try:
             if not await self.redis_db.hmset(session_data["session_id"], session_data):

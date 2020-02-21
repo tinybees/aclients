@@ -59,6 +59,20 @@ class AIOMongoClient(object):
             self.init_app(app, username=self.username, passwd=self.passwd, host=self.host, port=self.port,
                           dbname=self.dbname, pool_size=self.pool_size, **kwargs)
 
+    def create_db_conn(self, host: str, port: int, pool_size: int, username: str, passwd: str, dbname: str):
+        try:
+            self.client = AsyncIOMotorClient(host, port, maxPoolSize=pool_size, username=username, password=passwd)
+            self.db = self.client.get_database(name=dbname)
+        except ConnectionFailure as e:
+            aelog.exception("Mongo connection failed host={} port={} error:{}".format(host, port, e))
+            raise MongoError("Mongo connection failed host={} port={} error:{}".format(host, port, e))
+        except InvalidName as e:
+            aelog.exception("Invalid mongo db name {} {}".format(dbname, e))
+            raise MongoInvalidNameError("Invalid mongo db name {} {}".format(dbname, e))
+        except PyMongoError as err:
+            aelog.exception("Mongo DB init failed! error: {}".format(err))
+            raise MongoError("Mongo DB init failed!") from err
+
     def init_app(self, app, *, username=None, passwd=None, host=None, port=None, dbname=None,
                  pool_size=None, **kwargs):
         """
@@ -97,18 +111,7 @@ class AIOMongoClient(object):
             Returns:
 
             """
-            try:
-                self.client = AsyncIOMotorClient(host, port, maxPoolSize=pool_size, username=username, password=passwd)
-                self.db = self.client.get_database(name=dbname)
-            except ConnectionFailure as e:
-                aelog.exception("Mongo connection failed host={} port={} error:{}".format(host, port, e))
-                raise MongoError("Mongo connection failed host={} port={} error:{}".format(host, port, e))
-            except InvalidName as e:
-                aelog.exception("Invalid mongo db name {} {}".format(dbname, e))
-                raise MongoInvalidNameError("Invalid mongo db name {} {}".format(dbname, e))
-            except PyMongoError as err:
-                aelog.exception("Mongo DB init failed! error: {}".format(err))
-                raise MongoError("Mongo DB init failed!") from err
+            self.create_db_conn(host, port, pool_size, username, passwd, dbname)
 
         @app.listener('after_server_stop')
         async def close_connection(app_, loop):
@@ -150,18 +153,7 @@ class AIOMongoClient(object):
         self.msg_zh = "msg_zh" if use_zh else "msg_en"
 
         # engine
-        try:
-            self.client = AsyncIOMotorClient(host, port, maxPoolSize=pool_size, username=username, password=passwd)
-            self.db = self.client.get_database(name=dbname)
-        except ConnectionFailure as e:
-            aelog.exception("Mongo connection failed host={} port={} error:{}".format(host, port, e))
-            raise MongoError("Mongo connection failed host={} port={} error:{}".format(host, port, e))
-        except InvalidName as e:
-            aelog.exception("Invalid mongo db name {} {}".format(dbname, e))
-            raise MongoInvalidNameError("Invalid mongo db name {} {}".format(dbname, e))
-        except PyMongoError as err:
-            aelog.exception("Mongo DB init failed! error: {}".format(err))
-            raise MongoError("Mongo DB init failed!") from err
+        self.create_db_conn(host, port, pool_size, username, passwd, dbname)
 
         @atexit.register
         def close_connection():
@@ -378,6 +370,7 @@ class AIOMongoClient(object):
         else:
             return result
 
+    # noinspection PyAsyncCall
     async def insert_documents(self, name: str, documents: dict):
         """
         批量插入文档

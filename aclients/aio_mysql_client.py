@@ -9,7 +9,7 @@
 import asyncio
 import atexit
 from math import ceil
-from typing import (Dict, List, MutableMapping, Tuple)
+from typing import (Dict, List, MutableMapping, NoReturn, Optional, Tuple, Union)
 
 import aelog
 import sqlalchemy as sa
@@ -210,7 +210,7 @@ class Pagination(object):
         self.items = items
 
     @property
-    def pages(self):
+    def pages(self) -> int:
         """The total number of pages"""
         if self.per_page == 0:
             pages = 0
@@ -218,43 +218,44 @@ class Pagination(object):
             pages = int(ceil(self.total / float(self.per_page)))
         return pages
 
-    async def prev(self, ):
+    async def prev(self, ) -> List[RowProxy]:
         """Returns a :class:`Pagination` object for the previous page."""
         self._select_query.limit(self.per_page)
         self._select_query.offset((self.page - 1 - 1) * self.per_page)
         return await self._db_client._find_data(self._select_query)
 
     @property
-    def prev_num(self):
+    def prev_num(self) -> int:
         """Number of the previous page."""
         if not self.has_prev:
             return None
         return self.page - 1
 
     @property
-    def has_prev(self):
+    def has_prev(self) -> bool:
         """True if a previous page exists"""
         return self.page > 1
 
-    async def next(self, ):
+    async def next(self, ) -> List[RowProxy]:
         """Returns a :class:`Pagination` object for the next page."""
         self._select_query.limit(self.per_page)
         self._select_query.offset(self.page - 1 + 1 * self.per_page)
         return await self._db_client._find_data(self._select_query)
 
     @property
-    def has_next(self):
+    def has_next(self) -> bool:
         """True if a next page exists."""
         return self.page < self.pages
 
     @property
-    def next_num(self):
+    def next_num(self) -> int:
         """Number of the next page"""
         if not self.has_next:
             return None
         return self.page + 1
 
 
+# noinspection PyProtectedMember
 class Session(object):
     """
     query session
@@ -493,7 +494,7 @@ class Session(object):
                         await trans.commit()
             return rowcount
 
-    async def _find_one(self, model: DeclarativeMeta, query: BaseQuery) -> RowProxy or None:
+    async def _find_one(self, model: DeclarativeMeta, query: BaseQuery) -> Optional[RowProxy]:
         """
         查询单条数据
         Args:
@@ -521,7 +522,7 @@ class Session(object):
             cursor = await self._query_execute(select_query)
             return await cursor.first() if cursor.returns_rows else None
 
-    async def _find_data(self, select_query) -> List[RowProxy] or []:
+    async def _find_data(self, select_query) -> List[RowProxy]:
         """
         查询单条数据
         Args:
@@ -544,7 +545,7 @@ class Session(object):
         return await cursor.first()
 
     @staticmethod
-    def gen_query(select_query, query: BaseQuery, *, limit_clause: int = None, offset_clause: int = None):
+    def gen_query(select_query, query: BaseQuery, *, limit_clause: int = None, offset_clause: int = None) -> NoReturn:
         """
         查询单条数据
         Args:
@@ -587,7 +588,7 @@ class Session(object):
             return cursor.rowcount
 
     async def query_execute(self, query, params: Dict = None, size=None, cursor_close=True
-                            ) -> List[RowProxy] or RowProxy or None:
+                            ) -> Union[List[RowProxy], RowProxy, None]:
         """
         查询数据，用于复杂的查询
         Args:
@@ -615,7 +616,7 @@ class Session(object):
 
         return resp
 
-    async def find_one(self, model: DeclarativeMeta, *, query: BaseQuery = None) -> RowProxy or None:
+    async def find_one(self, model: DeclarativeMeta, *, query: BaseQuery = None) -> Optional[RowProxy]:
         """
         查询单条数据
         Args:
@@ -689,7 +690,7 @@ class Session(object):
 
         return Pagination(self, select_query, page, per_page, total, items)
 
-    async def find_all(self, model: DeclarativeMeta, *, query: BaseQuery = None) -> List[RowProxy] or []:
+    async def find_all(self, model: DeclarativeMeta, *, query: BaseQuery = None) -> List[RowProxy]:
         """
         插入数据
         Args:
@@ -806,7 +807,7 @@ class AIOMysqlClient(object):
     """
     MySQL异步操作指南
     """
-    model = declarative_base()
+    Model = declarative_base()
 
     def __init__(self, app=None, *, username="root", passwd=None, host="127.0.0.1", port=3306, dbname=None,
                  pool_size=10, **kwargs):
@@ -1086,7 +1087,7 @@ class AIOMysqlClient(object):
                         type_=field.type, primary_key=field.primary_key, index=field.index, nullable=field.nullable,
                         default=field.default, onupdate=field.onupdate, unique=field.unique,
                         autoincrement=field.autoincrement, doc=field.doc)
-            model_cls_ = type(class_name, (self.model,), {
+            model_cls_ = type(class_name, (self.Model,), {
                 "__doc__": model_cls.__doc__,
                 "__table_args__ ": getattr(
                     model_cls, "__table_args__", None) or {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4'},

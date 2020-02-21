@@ -15,6 +15,9 @@
 - session分页查询find_many增加默认按照id升序排序的功能，可关闭
 - 配置增加pool_recycle回旋关闭连接功能
 - 配置增加aclients_binds用于多库的配置,并且增加配置校验功能
+- 增加jrpc客户端单个方法请求的功能,调用形式和普通的函数调用形式一致
+- 增加jrpc客户端批量方法请求的功能,调用形式类似链式调用
+- 增加jrpc服务端jsonrpc子类, http和websocket的URL固定和client中的一致
 - 其他优化
 
 ###[1.0.0b45] - 2019-12-30
