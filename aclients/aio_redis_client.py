@@ -10,7 +10,7 @@ import atexit
 import secrets
 import uuid
 from collections import MutableMapping
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, NoReturn, Union
 
 import aelog
 import aredis
@@ -168,7 +168,7 @@ class AIORedisClient(object):
             if self.pool:
                 self.pool.disconnect()
 
-    async def save_session(self, session: Session, dump_responses: bool = False, ex: int = SESSION_EXPIRED):
+    async def save_session(self, session: Session, dump_responses: bool = False, ex: int = SESSION_EXPIRED) -> str:
         """
         利用hash map保存session
         Args:
@@ -203,7 +203,7 @@ class AIORedisClient(object):
             return session.session_id
 
     @staticmethod
-    async def response_dumps(dump_responses: bool, session: Session):
+    async def response_dumps(dump_responses: bool, session: Session) -> Dict:
         session_data = dict(vars(session))
         # 是否对每个键值进行dump
         if dump_responses:
@@ -216,7 +216,7 @@ class AIORedisClient(object):
             session_data = hash_data
         return session_data
 
-    async def delete_session(self, session_id: str, delete_key: bool = True):
+    async def delete_session(self, session_id: str, delete_key: bool = True) -> NoReturn:
         """
         利用hash map删除session
         Args:
@@ -251,7 +251,8 @@ class AIORedisClient(object):
             aelog.exception("delete session error: {}, {}".format(session_id, e))
             raise RedisClientError(str(e))
 
-    async def update_session(self, session: Session, dump_responses: bool = False, ex: int = SESSION_EXPIRED):
+    async def update_session(self, session: Session, dump_responses: bool = False,
+                             ex: int = SESSION_EXPIRED) -> NoReturn:
         """
         利用hash map更新session
         Args:
@@ -316,7 +317,7 @@ class AIORedisClient(object):
             else:
                 return session_data
 
-    async def verify(self, session_id: str):
+    async def verify(self, session_id: str) -> Session:
         """
         校验session，主要用于登录校验
         Args:
@@ -334,7 +335,7 @@ class AIORedisClient(object):
             return session
 
     async def save_update_hash_data(self, name: str, hash_data: Dict, field_name: str = None, ex: int = EXPIRED,
-                                    dump_responses: bool = False):
+                                    dump_responses: bool = False) -> str:
         """
         获取hash对象field_name对应的值
         Args:
@@ -375,7 +376,7 @@ class AIORedisClient(object):
             return name
 
     async def get_hash_data(self, name: str, field_name: str = None, ex: int = EXPIRED,
-                            load_responses: bool = False):
+                            load_responses: bool = False) -> Dict:
         """
         获取hash对象field_name对应的值
         Args:
@@ -413,7 +414,7 @@ class AIORedisClient(object):
         else:
             return hash_data
 
-    async def get_list_data(self, name: str, start: int = 0, end: int = -1, ex: int = EXPIRED):
+    async def get_list_data(self, name: str, start: int = 0, end: int = -1, ex: int = EXPIRED) -> List:
         """
         获取redis的列表中的数据
         Args:
@@ -434,7 +435,7 @@ class AIORedisClient(object):
             return data
 
     async def save_list_data(self, name: str, list_data: Union[List, str], save_to_left: bool = True,
-                             ex: int = EXPIRED):
+                             ex: int = EXPIRED) -> str:
         """
         保存数据到redis的列表中
         Args:
@@ -460,7 +461,7 @@ class AIORedisClient(object):
         else:
             return name
 
-    async def save_update_usual_data(self, name: str, value: Any, ex: int = EXPIRED):
+    async def save_update_usual_data(self, name: str, value: Any, ex: int = EXPIRED) -> str:
         """
         保存列表、映射对象为普通的字符串
         Args:
@@ -479,7 +480,7 @@ class AIORedisClient(object):
         else:
             return name
 
-    async def incrbynumber(self, name: str, amount: int = 1, ex: int = EXPIRED):
+    async def incrbynumber(self, name: str, amount: int = 1, ex: int = EXPIRED) -> str:
         """
 
         Args:
@@ -502,7 +503,7 @@ class AIORedisClient(object):
             return name
 
     async def get_usual_data(self, name: str, load_responses: bool = True, update_expire: bool = True,
-                             ex: int = EXPIRED):
+                             ex: int = EXPIRED) -> Union[Dict, str]:
         """
         获取name对应的值
         Args:
@@ -535,7 +536,7 @@ class AIORedisClient(object):
         """
         return await self.redis_db.exists(name)
 
-    async def delete_keys(self, names: List[str]):
+    async def delete_keys(self, names: List[str]) -> NoReturn:
         """
         删除一个或多个redis key
         Args:
@@ -547,7 +548,7 @@ class AIORedisClient(object):
         if not await self.redis_db.delete(*names):
             aelog.error("Delete redis keys failed {}.".format(*names))
 
-    async def get_keys(self, pattern_name: str) -> list:
+    async def get_keys(self, pattern_name: str) -> List:
         """
         根据正则表达式获取redis的keys
         Args:
