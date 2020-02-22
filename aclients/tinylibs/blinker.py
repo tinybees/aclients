@@ -9,6 +9,7 @@
 实现简单的信号，用于业务解耦
 """
 import asyncio
+from typing import NoReturn, Tuple
 
 from sanic import Sanic
 
@@ -17,7 +18,7 @@ from aclients.utils import Cached
 __all__ = ("Signal", "add_task")
 
 
-def add_task(app: Sanic, func, **kwargs):
+def add_task(app: Sanic, func, **kwargs) -> NoReturn:
     """
     添加异步执行任务
     Args:
@@ -49,7 +50,7 @@ class Signal(Cached):
         self.signal_name = signal_name
         self.receiver = []
 
-    def connect(self, receiver):
+    def connect(self, receiver) -> NoReturn:
         """
         连接信号的订阅者
         Args:
@@ -59,7 +60,7 @@ class Signal(Cached):
         """
         self.receiver.append(receiver)
 
-    def disconnect(self, receiver):
+    def disconnect(self, receiver) -> NoReturn:
         """
         取消连接信号的订阅者
         Args:
@@ -69,7 +70,7 @@ class Signal(Cached):
         """
         self.receiver.remove(receiver)
 
-    def send(self, app: Sanic, **kwargs):
+    def send(self, app: Sanic, **kwargs) -> Tuple:
         """
         发出信号到信号的订阅者，订阅者执行各自的功能
         Args:

@@ -7,6 +7,7 @@
 @time: 19-1-21 下午6:47
 """
 from functools import wraps
+from typing import Dict, List, Tuple, Union
 
 import aelog
 from marshmallow import EXCLUDE, Schema, ValidationError
@@ -39,8 +40,8 @@ def singleton(cls):
     return _singleton
 
 
-def schema_validate(schema_obj, required: (tuple, list) = tuple(), is_extends=True, excluded: (tuple, list) = tuple(),
-                    use_zh=True, message=None):
+def schema_validate(schema_obj, required: Union[Tuple, List] = tuple(), is_extends: bool = True,
+                    excluded: Union[Tuple, List] = tuple(), use_zh: bool = True, message: Dict = None):
     """
     校验post的json格式和类型是否正确
     Args:

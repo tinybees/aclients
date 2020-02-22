@@ -6,6 +6,8 @@
 @software: PyCharm
 @time: 19-4-2 上午9:04
 """
+from typing import Dict, List, Tuple
+
 import aelog
 import pymysql
 
@@ -21,7 +23,8 @@ class TinyMysql(object):
 
     """
 
-    def __init__(self, db_host="127.0.0.1", db_port=3306, db_name=None, db_user="root", db_pwd="123456"):
+    def __init__(self, db_host: str = "127.0.0.1", db_port: int = 3306, db_name: str = None,
+                 db_user: str = "root", db_pwd: str = "123456"):
         """
             pymysql 操作数据库的各种方法
         Args:
@@ -57,7 +60,7 @@ class TinyMysql(object):
                 self.conn_pool[name] = get_connection()
             return self.conn_pool[name]
 
-    def execute_many(self, sql, args_data):
+    def execute_many(self, sql: str, args_data: List[Tuple]) -> int:
         """
             批量插入数据
         Args:
@@ -84,7 +87,7 @@ class TinyMysql(object):
             self.conn.commit()
         return count
 
-    def execute(self, sql, args_data):
+    def execute(self, sql: str, args_data: Tuple) -> int:
         """
             执行单条记录，更新、插入或者删除
         Args:
@@ -110,7 +113,7 @@ class TinyMysql(object):
             self.conn.commit()
         return count
 
-    def find_one(self, sql, args=None):
+    def find_one(self, sql: str, args: Tuple = None) -> Dict:
         """
             查询单条记录
         Args:
@@ -128,7 +131,7 @@ class TinyMysql(object):
         else:
             return cursor.fetchone()
 
-    def find_data(self, sql, args=None, size=None):
+    def find_data(self, sql: str, args: Tuple = None, size: int = None) -> List[Dict]:
         """
             查询指定行数的数据
         Args:

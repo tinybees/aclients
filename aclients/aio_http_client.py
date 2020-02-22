@@ -8,6 +8,7 @@
 """
 import asyncio
 import atexit
+from typing import Dict
 
 import aelog
 import aiohttp
@@ -19,12 +20,44 @@ from .utils import Singleton, verify_message
 __all__ = ("AIOHttpClient", "AsyncResponse")
 
 
+class AsyncResponse(object):
+    """
+    异步响应对象,需要重新封装对象
+    """
+    __slots__ = ["status_code", "reason", "headers", "cookies", "resp_body", "content"]
+
+    def __init__(self, status_code: int, reason: str, headers: Dict, cookies: Dict, *, resp_body: Dict,
+                 content: bytes):
+        """
+
+        Args:
+
+        """
+        self.status_code = status_code
+        self.reason = reason
+        self.headers = headers
+        self.cookies = cookies
+        self.resp_body = resp_body
+        self.content = content
+
+    def json(self, ):
+        """
+        为了适配
+        Args:
+
+        Returns:
+
+        """
+        return self.resp_body
+
+
 class AIOHttpClient(Singleton):
     """
     基于aiohttp的异步封装
     """
 
-    def __init__(self, app=None, *, timeout=5 * 60, verify_ssl=True, message=None, use_zh=True, cookiejar_unsafe=False):
+    def __init__(self, app=None, *, timeout: int = 5 * 60, verify_ssl: bool = True, message: Dict = None,
+                 use_zh: bool = True, cookiejar_unsafe: bool = False):
         """
         基于aiohttp的异步封装
         Args:
@@ -50,7 +83,8 @@ class AIOHttpClient(Singleton):
             self.init_app(app, timeout=self.timeout, verify_ssl=self.verify_ssl, message=self.message,
                           use_zh=self.use_zh)
 
-    def init_app(self, app, *, timeout=None, verify_ssl=None, message=None, use_zh=None):
+    def init_app(self, app, *, timeout: int = None, verify_ssl: bool = None, message: Dict = None,
+                 use_zh: bool = None):
         """
         基于aiohttp的异步封装
         Args:
@@ -94,7 +128,8 @@ class AIOHttpClient(Singleton):
             if self.session:
                 await self.session.close()
 
-    def init_session(self, *, timeout=None, verify_ssl=None, message=None, use_zh=None):
+    def init_session(self, *, timeout: int = None, verify_ssl: bool = None, message: Dict = None,
+                     use_zh: bool = None):
         """
         基于aiohttp的异步封装
         Args:
@@ -137,8 +172,9 @@ class AIOHttpClient(Singleton):
         loop.run_until_complete(open_connection())
         atexit.register(lambda: loop.run_until_complete(close_connection()))
 
-    async def _request(self, method, url, *, params=None, data=None, json=None, headers=None, timeout=None,
-                       verify_ssl=None, **kwargs):
+    async def _request(self, method: str, url: str, *, params: Dict = None, data: Dict = None,
+                       json: Dict = None, headers: Dict = None, timeout: int = None, verify_ssl: bool = None,
+                       **kwargs) -> AsyncResponse:
         """
 
         Args:
@@ -245,8 +281,9 @@ class AIOHttpClient(Singleton):
                 return AsyncResponse(resp.status, resp.reason, resp.headers, resp.cookies, resp_body=resp_json,
                                      content=b"")
 
-    async def async_request(self, method, url, *, params=None, data=None, json=None, headers=None, timeout=None,
-                            verify_ssl=None, **kwargs):
+    async def async_request(self, method: str, url: str, *, params: Dict = None, data: Dict = None,
+                            json: Dict = None, headers: Dict = None, timeout: int = None, verify_ssl: bool = None,
+                            **kwargs) -> AsyncResponse:
         """
 
         Args:
@@ -259,7 +296,8 @@ class AIOHttpClient(Singleton):
         return await self._request(method, url, params=params, data=data, json=json, headers=headers,
                                    timeout=timeout, verify_ssl=verify_ssl, **kwargs)
 
-    async def async_get(self, url, *, params=None, headers=None, timeout=None, verify_ssl=None, **kwargs):
+    async def async_get(self, url: str, *, params: Dict = None, headers: Dict = None, timeout: int = None,
+                        verify_ssl: bool = None, **kwargs) -> AsyncResponse:
         """
 
         Args:
@@ -272,8 +310,9 @@ class AIOHttpClient(Singleton):
         return await self._request("GET", url, params=params, headers=headers, timeout=timeout, verify_ssl=verify_ssl,
                                    **kwargs)
 
-    async def async_post(self, url, *, params=None, data=None, json=None, headers=None, timeout=None, verify_ssl=None,
-                         **kwargs):
+    async def async_post(self, url: str, *, params: Dict = None, data: Dict = None, json: Dict = None,
+                         headers: Dict = None, timeout: int = None, verify_ssl: bool = None,
+                         **kwargs) -> AsyncResponse:
         """
 
         Args:
@@ -286,8 +325,9 @@ class AIOHttpClient(Singleton):
         return await self._request("POST", url, params=params, data=data, json=json, headers=headers, timeout=timeout,
                                    verify_ssl=verify_ssl, **kwargs)
 
-    async def async_put(self, url, *, params=None, data=None, json=None, headers=None, timeout=None, verify_ssl=None,
-                        **kwargs):
+    async def async_put(self, url: str, *, params: Dict = None, data: Dict = None, json: Dict = None,
+                        headers: Dict = None, timeout: int = None, verify_ssl: bool = None,
+                        **kwargs) -> AsyncResponse:
         """
 
         Args:
@@ -300,8 +340,9 @@ class AIOHttpClient(Singleton):
         return await self._request("PUT", url, params=params, data=data, json=json, headers=headers, timeout=timeout,
                                    verify_ssl=verify_ssl, **kwargs)
 
-    async def async_patch(self, url, *, params=None, data=None, json=None, headers=None, timeout=None, verify_ssl=None,
-                          **kwargs):
+    async def async_patch(self, url: str, *, params: Dict = None, data: Dict = None, json: Dict = None,
+                          headers: Dict = None, timeout: int = None, verify_ssl: bool = None,
+                          **kwargs) -> AsyncResponse:
         """
 
         Args:
@@ -314,8 +355,9 @@ class AIOHttpClient(Singleton):
         return await self._request("PATCH", url, params=params, data=data, json=json, headers=headers, timeout=timeout,
                                    verify_ssl=verify_ssl, **kwargs)
 
-    async def async_delete(self, url, *, params=None, data=None, json=None, headers=None, verify_ssl=None, timeout=None,
-                           **kwargs):
+    async def async_delete(self, url, *, params: Dict = None, data: Dict = None, json: Dict = None,
+                           headers: Dict = None, verify_ssl: bool = None, timeout: int = None,
+                           **kwargs) -> AsyncResponse:
         """
 
         Args:
@@ -327,33 +369,3 @@ class AIOHttpClient(Singleton):
         timeout = self.timeout if timeout is None else timeout
         return await self._request("DELETE", url, params=params, data=data, json=json, headers=headers,
                                    timeout=timeout, verify_ssl=verify_ssl, **kwargs)
-
-
-class AsyncResponse(object):
-    """
-    异步响应对象,需要重新封装对象
-    """
-    __slots__ = ["status_code", "reason", "headers", "cookies", "resp_body", "content"]
-
-    def __init__(self, status_code, reason, headers, cookies, *, resp_body, content):
-        """
-
-        Args:
-
-        """
-        self.status_code = status_code
-        self.reason = reason
-        self.headers = headers
-        self.cookies = cookies
-        self.resp_body = resp_body
-        self.content = content
-
-    def json(self, ):
-        """
-        为了适配
-        Args:
-
-        Returns:
-
-        """
-        return self.resp_body

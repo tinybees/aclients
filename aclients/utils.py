@@ -15,6 +15,7 @@ import weakref
 from collections import MutableMapping, MutableSequence
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
+from typing import Dict, List, Union
 
 import yaml
 from bson import ObjectId
@@ -33,7 +34,7 @@ __all__ = ("ignore_error", "verify_message", "wrap_async_func", "analysis_yaml",
 pool = ThreadPoolExecutor(multiprocessing.cpu_count() * 10 + multiprocessing.cpu_count())
 
 
-def gen_ident(ident_len=8):
+def gen_ident(ident_len: int = 8):
     """
     获取随机的标识码以字母开头， 默认8个字符的长度
     Args:
@@ -63,7 +64,7 @@ def ignore_error(error=Exception):
         pass
 
 
-def verify_message(src_message: dict, message: list or dict):
+def verify_message(src_message: Dict, message: Union[List, Dict]):
     """
     对用户提供的message进行校验
     Args:
@@ -103,7 +104,7 @@ async def wrap_async_func(func, *args, **kwargs):
         return result
 
 
-def gen_class_name(underline_name):
+def gen_class_name(underline_name: str):
     """
     由下划线的名称变为驼峰的名称
     Args:
@@ -114,7 +115,7 @@ def gen_class_name(underline_name):
     return "".join([name.capitalize() for name in underline_name.split("_")])
 
 
-def analysis_yaml(full_conf_path):
+def analysis_yaml(full_conf_path: str):
     """
     解析yaml文件
     Args:

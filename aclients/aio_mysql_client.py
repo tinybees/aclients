@@ -194,7 +194,7 @@ class Pagination(object):
     no longer work.
     """
 
-    def __init__(self, db_client, select_query, page, per_page, total, items):
+    def __init__(self, db_client, select_query: Select, page: int, per_page: int, total: int, items: List[Dict]):
         #: the unlimited query object that was used to create this
         #: aiomysqlclient object.
         self._db_client = db_client
@@ -261,7 +261,7 @@ class Session(object):
     query session
     """
 
-    def __init__(self, aio_engine, message, msg_zh, max_per_page):
+    def __init__(self, aio_engine, message: Dict, msg_zh: str, max_per_page: int):
         """
             query session
         Args:
@@ -307,7 +307,7 @@ class Session(object):
                     update_values[key] = val.onupdate.arg.__wrapped__()
         return update_values
 
-    async def _execute(self, query, params: List or Dict, msg_code: int) -> ResultProxy:
+    async def _execute(self, query: Union[Select, str], params: Dict, msg_code: int) -> ResultProxy:
         """
         插入数据，更新或者删除数据
         Args:
@@ -340,7 +340,7 @@ class Session(object):
                     await trans.commit()
         return cursor
 
-    async def _query_execute(self, query, params: Dict = None) -> ResultProxy:
+    async def _query_execute(self, query: Union[Select, str], params: Dict = None) -> ResultProxy:
         """
         查询数据
         Args:
@@ -522,7 +522,7 @@ class Session(object):
             cursor = await self._query_execute(select_query)
             return await cursor.first() if cursor.returns_rows else None
 
-    async def _find_data(self, select_query) -> List[RowProxy]:
+    async def _find_data(self, select_query: Select) -> List[RowProxy]:
         """
         查询单条数据
         Args:
@@ -533,7 +533,7 @@ class Session(object):
         cursor = await self._query_execute(select_query)
         return await cursor.fetchall() if cursor.returns_rows else []
 
-    async def _find_count(self, select_query) -> RowProxy:
+    async def _find_count(self, select_query: Select) -> RowProxy:
         """
         查询单条数据
         Args:
@@ -545,7 +545,8 @@ class Session(object):
         return await cursor.first()
 
     @staticmethod
-    def gen_query(select_query, query: BaseQuery, *, limit_clause: int = None, offset_clause: int = None) -> NoReturn:
+    def gen_query(select_query, query: BaseQuery, *, limit_clause: int = None,
+                  offset_clause: int = None) -> NoReturn:
         """
         查询单条数据
         Args:
@@ -574,7 +575,7 @@ class Session(object):
         if offset_clause is not None:
             select_query.offset(offset_clause)
 
-    async def execute(self, query, params: Dict) -> int:
+    async def execute(self, query: Union[Select, str], params: Dict) -> int:
         """
         插入数据，更新或者删除数据
         Args:
@@ -587,7 +588,7 @@ class Session(object):
         async with await self._execute(query, params, 6) as cursor:
             return cursor.rowcount
 
-    async def query_execute(self, query, params: Dict = None, size=None, cursor_close=True
+    async def query_execute(self, query: Union[Select, str], params: Dict = None, size=None, cursor_close=True
                             ) -> Union[List[RowProxy], RowProxy, None]:
         """
         查询数据，用于复杂的查询
@@ -631,7 +632,7 @@ class Session(object):
         return await self._find_one(model, query)
 
     async def find_many(self, model: DeclarativeMeta, *, query: BaseQuery = None,
-                        page: int = 1, per_page: int = 20, primary_order=True) -> Pagination:
+                        page: int = 1, per_page: int = 20, primary_order: bool = True) -> Pagination:
         """Returns ``per_page`` items from page ``page``.
 
         If ``page`` or ``per_page`` are ``None``, they will be retrieved from
@@ -772,7 +773,7 @@ class Session(object):
             raise FuncArgsError("column_names must be provide!")
         return await self._insert_from_select(model, column_names, select_query)
 
-    async def update_data(self, model, *, query: BaseQuery, update_data: Dict or List) -> int:
+    async def update_data(self, model, *, query: BaseQuery, update_data: Union[Dict, List]) -> int:
         """
         更新数据
 
@@ -809,8 +810,8 @@ class AIOMysqlClient(object):
     """
     Model = declarative_base()
 
-    def __init__(self, app=None, *, username="root", passwd=None, host="127.0.0.1", port=3306, dbname=None,
-                 pool_size=10, **kwargs):
+    def __init__(self, app=None, *, username: str = "root", passwd: str = None, host: str = "127.0.0.1",
+                 port: int = 3306, dbname: str = None, pool_size: int = 10, **kwargs):
         """
         mysql 非阻塞工具类
         Args:
@@ -852,8 +853,8 @@ class AIOMysqlClient(object):
             self.init_app(app, username=self.username, passwd=self.passwd, host=self.host, port=self.port,
                           dbname=self.dbname, pool_size=self.pool_size, **kwargs)
 
-    def init_app(self, app, *, username=None, passwd=None, host=None, port=None, dbname=None,
-                 pool_size=None, **kwargs):
+    def init_app(self, app, *, username: str = None, passwd: str = None, host: str = None, port: int = None,
+                 dbname: str = None, pool_size: int = None, **kwargs):
         """
         mysql 实例初始化
         Args:
@@ -920,8 +921,8 @@ class AIOMysqlClient(object):
                 tasks.append(asyncio.ensure_future(aio_engine.wait_closed()))
             await asyncio.wait(tasks)
 
-    def init_engine(self, *, username="root", passwd=None, host="127.0.0.1", port=3306, dbname=None,
-                    pool_size=50, **kwargs):
+    def init_engine(self, *, username: str = "root", passwd: str = None, host: str = "127.0.0.1", port: int = 3306,
+                    dbname: str = None, pool_size: int = 50, **kwargs):
         """
         mysql 实例初始化
         Args:
@@ -1035,7 +1036,7 @@ class AIOMysqlClient(object):
             self.session_pool[None] = Session(self.engine_pool[None], self.message, self.msg_zh, self.max_per_page)
         return self.session_pool[None]
 
-    def gen_session(self, bind) -> Session:
+    def gen_session(self, bind: str) -> Session:
         """
         session bind
         Args:
