@@ -12,6 +12,7 @@
 - 重构aio_mysql_client模块query查询向sqlalchemy的写法靠拢,而不再偏向mongodb,方便熟悉sqlalchemy的同时快速上手.
 - 重构aio_mysql_client模块所有的CRUD功能全部使用query查询
 - 增加Pagination类对于分页查询更简单，也更容易上手(sqlalchemy的写法)
+- 升级aiomysql库到20版本,增加insert_many插入多条数据功能
 - 增加生成分表model功能，使得分表的使用简单高效
 - 增加多库多session的同时切换使用功能，提供对访问多个库的支持功能
 - 优化应用停止时并发关闭所有的数据库连接
