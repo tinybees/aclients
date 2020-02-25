@@ -823,12 +823,12 @@ class AIOMysqlClient(object):
             passwd: mysql password
             pool_size: mysql pool size
             pool_recycle: pool recycle time, type int
-            aclients_binds: binds config, eg:{"first":{"aclients_host":"127.0.0.1",
-                                                        "aclients_port":3306,
-                                                        "aclients_username":"root",
-                                                        "aclients_passwd":"",
-                                                        "aclients_dbname":"dbname",
-                                                        "aclients_pool_size":10}}
+            aclients_binds: binds config, eg:{"first":{"aclients_mysql_host":"127.0.0.1",
+                                                        "aclients_mysql_port":3306,
+                                                        "aclients_mysql_username":"root",
+                                                        "aclients_mysql_passwd":"",
+                                                        "aclients_mysql_dbname":"dbname",
+                                                        "aclients_mysql_pool_size":10}}
         """
         self.app = app
         self.engine_pool = {}  # engine pool
@@ -869,18 +869,18 @@ class AIOMysqlClient(object):
         Returns:
 
         """
-        username = username or app.config.get("ACLIENTS_USERNAME", None) or self.username
-        passwd = passwd or app.config.get("ACLIENTS_PASSWD", None) or self.passwd
-        host = host or app.config.get("ACLIENTS_HOST", None) or self.host
-        port = port or app.config.get("ACLIENTS_PORT", None) or self.port
-        dbname = dbname or app.config.get("ACLIENTS_DBNAME", None) or self.dbname
-        self.pool_size = pool_size or app.config.get("ACLIENTS_POOL_SIZE", None) or self.pool_size
+        username = username or app.config.get("ACLIENTS_MYSQL_USERNAME", None) or self.username
+        passwd = passwd or app.config.get("ACLIENTS_MYSQL_PASSWD", None) or self.passwd
+        host = host or app.config.get("ACLIENTS_MYSQL_HOST", None) or self.host
+        port = port or app.config.get("ACLIENTS_MYSQL_PORT", None) or self.port
+        dbname = dbname or app.config.get("ACLIENTS_MYSQL_DBNAME", None) or self.dbname
+        self.pool_size = pool_size or app.config.get("ACLIENTS_MYSQL_POOL_SIZE", None) or self.pool_size
 
         self.pool_recycle = kwargs.get("pool_recycle") or app.config.get(
             "ACLIENTS_POOL_RECYCLE", None) or self.pool_recycle
 
-        message = kwargs.get("message") or app.config.get("ACLIENTS_MESSAGE", None) or self.message
-        use_zh = kwargs.get("use_zh") or app.config.get("ACLIENTS_MSGZH", None) or self.use_zh
+        message = kwargs.get("message") or app.config.get("ACLIENTS_MYSQL_MESSAGE", None) or self.message
+        use_zh = kwargs.get("use_zh") or app.config.get("ACLIENTS_MYSQL_MSGZH", None) or self.use_zh
 
         self.aclients_binds = kwargs.get("aclients_binds") or app.config.get(
             "ACLIENTS_BINDS", None) or self.aclients_binds
@@ -1002,8 +1002,8 @@ class AIOMysqlClient(object):
                 if not isinstance(bind, dict):
                     raise TypeError(f"aclients_binds config {bind_name} type error, must be Dict.")
                 missing_items = []
-                for item in ["aclients_host", "aclients_port", "aclients_username", "aclients_passwd",
-                             "aclients_dbname"]:
+                for item in ["aclients_mysql_host", "aclients_mysql_port", "aclients_mysql_username",
+                             "aclients_mysql_passwd", "aclients_mysql_dbname"]:
                     if item not in bind:
                         missing_items.append(item)
                 if missing_items:
@@ -1049,9 +1049,10 @@ class AIOMysqlClient(object):
         if bind not in self.engine_pool:
             bind_conf: Dict = self.aclients_binds[bind]
             self.engine_pool[bind] = asyncio.get_event_loop().run_until_complete(create_engine(
-                host=bind_conf.get("aclients_host"), port=bind_conf.get("aclients_port"),
-                user=bind_conf.get("aclients_username"), password=bind_conf.get("aclients_passwd"),
-                db=bind_conf.get("aclients_dbname"), maxsize=bind_conf.get("aclients_pool_size") or self.pool_size,
+                host=bind_conf.get("aclients_mysql_host"), port=bind_conf.get("aclients_mysql_port"),
+                user=bind_conf.get("aclients_mysql_username"), password=bind_conf.get("aclients_mysql_passwd"),
+                db=bind_conf.get("aclients_mysql_dbname"),
+                maxsize=bind_conf.get("aclients_mysql_pool_size") or self.pool_size,
                 pool_recycle=self.pool_recycle, charset=self.charset))
         if None not in self.session_pool:
             self.session_pool[bind] = Session(self.engine_pool[bind], self.message, self.msg_zh, self.max_per_page)
