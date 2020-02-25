@@ -22,16 +22,21 @@ class AIOJRPCClient(object):
     暂时不支持单个和批量的通知调用
     """
     aio_http_client: AIOHttpClient = None
+    jrpc_router: str = None
     jrpc_server_maps: Dict = {}
 
-    def __init__(self, aio_http_client: AIOHttpClient, jrpc_server: str = None):
+    def __init__(self, aio_http_client: AIOHttpClient, jrpc_server: str = None, jrpc_router: str = "/api/jrpc/post"):
         """
         async json rpc client
         Args:
-
+            aio_http_client: AIOHttpClient class
+            jrpc_server: jrpc server name
+            jrpc_router: jrpc router
         """
         if self.__class__.aio_http_client is None:
             self.__class__.aio_http_client = aio_http_client
+        if self.__class__.jrpc_router is None:
+            self.__class__.jrpc_router = jrpc_router
         self.jrpc_server: str = jrpc_server
         self.methods: List[Tuple[str, Union[List, Dict, None]]] = []
 
@@ -45,7 +50,7 @@ class AIOJRPCClient(object):
         """
         if jrpc_server not in self.jrpc_server_maps:
             raise ValueError(f"{jrpc_server} is does not exist, please register it")
-        return AIOJRPCClient(self.aio_http_client, jrpc_server=jrpc_server)
+        return AIOJRPCClient(self.aio_http_client, jrpc_server, self.jrpc_router)
 
     def __getattr__(self, method) -> 'AIOJRPCClient':
         """
@@ -114,7 +119,7 @@ class AIOJRPCClient(object):
             raise FuncArgsError("jrpc_address value error")
 
         if jrpc_server not in cls.jrpc_server_maps:
-            cls.jrpc_server_maps[jrpc_server] = f"http://{jrpc_address[0]}:{jrpc_address[1]}/api/jrpc/post"
+            cls.jrpc_server_maps[jrpc_server] = f"http://{jrpc_address[0]}:{jrpc_address[1]}{cls.jrpc_router}"
 
     async def _jrpc_post(self, *, jrpc_body: Dict) -> Union[Dict, List]:
         """

@@ -4,7 +4,8 @@
 
 #### Changed 
 - 优化所有代码中没有类型标注的地方,都改为typing中的类型标注
-
+- SanicJsonRPC类中增加init_app方法保证和其他sanic扩展的初始化和调用方式一致
+- jrpc client 和 jrpc server增加jrpc router的修改入口
 
 ###[1.0.1b1] - 2020-2-14
 

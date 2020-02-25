@@ -16,13 +16,13 @@ app = Sanic()
 jsonrpc = SanicJsonRPC(app)
 
 
-@jsonrpc
+@jsonrpc.jrpc
 async def sub(a: int, b: int) -> int:
     await asyncio.sleep(0.1)
     return a - b
 
 
-@jsonrpc
+@jsonrpc.jrpc
 async def test() -> str:
     await asyncio.sleep(0.1)
     return "中文"
