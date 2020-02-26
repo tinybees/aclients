@@ -307,7 +307,8 @@ class Session(object):
                     update_values[key] = val.onupdate.arg.__wrapped__()
         return update_values
 
-    async def _execute(self, query: Union[Select, str], params: Dict, msg_code: int) -> ResultProxy:
+    async def _execute(self, query: Union[Select, str], params: Union[List[Dict], Dict], msg_code: int
+                       ) -> ResultProxy:
         """
         插入数据，更新或者删除数据
         Args:
@@ -575,7 +576,7 @@ class Session(object):
         if offset_clause is not None:
             select_query.offset(offset_clause)
 
-    async def execute(self, query: Union[Select, str], params: Dict) -> int:
+    async def execute(self, query: Union[Select, str], params: Union[List[Dict], Dict]) -> int:
         """
         插入数据，更新或者删除数据
         Args:
