@@ -1054,7 +1054,7 @@ class AIOMysqlClient(object):
                 db=bind_conf.get("aclients_mysql_dbname"),
                 maxsize=bind_conf.get("aclients_mysql_pool_size") or self.pool_size,
                 pool_recycle=self.pool_recycle, charset=self.charset))
-        if None not in self.session_pool:
+        if bind not in self.session_pool:
             self.session_pool[bind] = Session(self.engine_pool[bind], self.message, self.msg_zh, self.max_per_page)
         return self.session_pool[bind]
 
