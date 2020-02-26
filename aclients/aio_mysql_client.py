@@ -32,7 +32,8 @@ from .utils import gen_class_name, verify_message
 __all__ = ("AIOMysqlClient", "all_", "any_", "and_", "or_", "bindparam", "select", "text", "table", "column",
            "over", "within_group", "label", "case", "cast", "extract", "tuple_", "except_", "except_all", "intersect",
            "intersect_all", "union", "union_all", "exists", "nullsfirst", "nullslast", "asc", "desc", "distinct",
-           "type_coerce", "true", "false", "null", "join", "outerjoin", "funcfilter", "func", "not_")
+           "type_coerce", "true", "false", "null", "join", "outerjoin", "funcfilter", "func", "not_", "Select",
+           "update", "delete")
 
 
 class BaseQuery(object):
