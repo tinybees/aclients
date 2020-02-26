@@ -13,7 +13,8 @@ from sanic import Sanic
 from aclients.jsonrpc import SanicJsonRPC
 
 app = Sanic()
-jsonrpc = SanicJsonRPC(app)
+jsonrpc = SanicJsonRPC()
+jsonrpc.init_app(app)
 
 
 @jsonrpc.jrpc
