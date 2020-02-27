@@ -380,8 +380,8 @@ class Session(object):
             aelog.exception(e)
             raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
         else:
-            async with self._execute(query, insert_data_, 1) as cursor:
-                return cursor.rowcount, insert_data_.get("id") or cursor.lastrowid
+            cursor = await self._execute(query, insert_data_, 1)
+            return cursor.rowcount, insert_data_.get("id") or cursor.lastrowid
 
     async def _insert_from_select(self, model, column_names: List, select_query: Select) -> Tuple[int, str]:
         """
@@ -404,8 +404,8 @@ class Session(object):
             aelog.exception(e)
             raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
         else:
-            async with await self._execute(query, {}, 1) as cursor:
-                return cursor.rowcount, cursor.lastrowid
+            cursor = await self._execute(query, {}, 1)
+            return cursor.rowcount, cursor.lastrowid
 
     async def _insert_many(self, model, insert_data: List[Dict]) -> int:
         """
@@ -426,8 +426,8 @@ class Session(object):
             aelog.exception(e)
             raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
         else:
-            async with self._execute(query, insert_data_, 1) as cursor:
-                return cursor.rowcount
+            cursor = await self._execute(query, insert_data_, 1)
+            return cursor.rowcount
 
     async def _update_data(self, model, query: BaseQuery, update_data: Dict or List) -> int:
         """
@@ -459,8 +459,8 @@ class Session(object):
             aelog.exception(e)
             raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
         else:
-            async with await self._execute(select_query, update_data_, 2) as cursor:
-                return cursor.rowcount
+            cursor = await self._execute(select_query, update_data_, 2)
+            return cursor.rowcount
 
     async def _delete_data(self, model, query: BaseQuery) -> int:
         """
@@ -479,12 +479,10 @@ class Session(object):
             aelog.exception(e)
             raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
         else:
-            rowcount = 0
             async with self.aio_engine.acquire() as conn:
                 async with conn.begin() as trans:
                     try:
-                        async with conn.execute(select_query) as cursor:
-                            rowcount = cursor.rowcount
+                        cursor = await conn.execute(select_query)
                     except (MySQLError, Error) as e:
                         await trans.rollback()
                         aelog.exception(e)
@@ -495,7 +493,7 @@ class Session(object):
                         raise HttpError(400, message=self.message[3][self.msg_zh])
                     else:
                         await trans.commit()
-            return rowcount
+            return cursor.rowcount
 
     async def _find_one(self, model: DeclarativeMeta, query: BaseQuery) -> Optional[RowProxy]:
         """
@@ -590,8 +588,8 @@ class Session(object):
             不确定执行的是什么查询，直接返回ResultProxy实例
         """
         params = dict(params) if isinstance(params, MutableMapping) else {}
-        async with await self._execute(query, params, 6) as cursor:
-            return cursor.rowcount
+        cursor = await self._execute(query, params, 6)
+        return cursor.rowcount
 
     async def query_execute(self, query: Union[Select, str], params: Dict = None, size=None, cursor_close=True
                             ) -> Union[List[RowProxy], RowProxy, None]:
