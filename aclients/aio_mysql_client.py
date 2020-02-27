@@ -9,7 +9,7 @@
 import asyncio
 import atexit
 from math import ceil
-from typing import (Dict, List, MutableMapping, NoReturn, Optional, Tuple, Union)
+from typing import (Dict, List, MutableMapping, Optional, Tuple, Union)
 
 import aelog
 import sqlalchemy as sa
@@ -449,11 +449,12 @@ class Session(object):
             else:
                 update_data_ = [{**update_data_, **one_data} for one_data in update_data]
 
-            select_query = update(model)
-            for one_clause in query._whereclause:
-                select_query.where(one_clause)
+            if query._bind_values is None:
+                select_query = update(model).values(update_data)
             else:
-                select_query.values(update_data_ if query._bind_values is None else query._bind_values)
+                select_query = update(model).values(query._bind_values)
+            for one_clause in query._whereclause:
+                select_query = select_query.where(one_clause)
         except SQLAlchemyError as e:
             aelog.exception(e)
             raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
@@ -473,7 +474,7 @@ class Session(object):
         try:
             select_query = delete(model)
             for one_clause in query._whereclause:
-                select_query.where(one_clause)
+                select_query = select_query.where(one_clause)
         except SQLAlchemyError as e:
             aelog.exception(e)
             raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
@@ -508,15 +509,15 @@ class Session(object):
         try:
             select_query = select([model] if not query._columns else query._columns)
             if query._with_hint:
-                select_query.with_hint(*query._with_hint)
+                select_query = select_query.with_hint(*query._with_hint)
             for one_clause in query._whereclause:
                 select_query.append_whereclause(one_clause)
             if query._order_by:
-                select_query.order_by(*query._order_by)
+                select_query.append_order_by(*query._order_by)
             if query._distinct:
-                select_query.distinct(*query._distinct)
+                select_query = select_query.distinct(*query._distinct)
             if query._columns:
-                select_query.with_only_columns(query._columns)
+                select_query = select_query.with_only_columns(query._columns)
         except SQLAlchemyError as e:
             aelog.exception(e)
             raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
@@ -547,8 +548,8 @@ class Session(object):
         return await cursor.first()
 
     @staticmethod
-    def gen_query(select_query, query: BaseQuery, *, limit_clause: int = None,
-                  offset_clause: int = None) -> NoReturn:
+    def gen_query(select_query: Select, query: BaseQuery, *, limit_clause: int = None,
+                  offset_clause: int = None) -> Select:
         """
         查询单条数据
         Args:
@@ -560,22 +561,24 @@ class Session(object):
             返回条数
         """
         if query._with_hint:
-            select_query.with_hint(*query._with_hint)
+            select_query = select_query.with_hint(*query._with_hint)
         if query._whereclause:
             for one_clause in query._whereclause:
                 select_query.append_whereclause(one_clause)
         if query._order_by:
-            select_query.order_by(*query._order_by)
+            select_query.append_order_by(*query._order_by)
         if query._group_by:
-            select_query.group_by(*query._group_by)
+            select_query.append_group_by(*query._group_by)
             for one_clause in query._having:
                 select_query.append_having(one_clause)
         if query._distinct:
-            select_query.distinct(*query._distinct)
+            select_query = select_query.distinct(*query._distinct)
         if limit_clause is not None:
-            select_query.limit(limit_clause)
+            select_query = select_query.limit(limit_clause)
         if offset_clause is not None:
-            select_query.offset(offset_clause)
+            select_query = select_query.offset(offset_clause)
+
+        return select_query
 
     async def execute(self, query: Union[Select, str], params: Union[List[Dict], Dict]) -> int:
         """
@@ -668,15 +671,16 @@ class Session(object):
             select_query = select([model] if not query._columns else query._columns)
             # 如果per_page为0,则证明要获取所有的数据，否则还是通常的逻辑
             if per_page != 0:
-                self.gen_query(select_query, query, limit_clause=per_page, offset_clause=(page - 1) * per_page)
+                select_query = self.gen_query(
+                    select_query, query, limit_clause=per_page, offset_clause=(page - 1) * per_page)
                 # 如果分页获取的时候没有进行排序,并且model中有id字段,则增加用id字段的升序排序
                 # 前提是默认id是主键,因为不排序会有混乱数据,所以从中间件直接解决,业务层不需要关心了
                 # 如果业务层有排序了，则此处不再提供排序功能
                 # 如果遇到大数据量的分页查询问题时，建议关闭此处，然后再基于已有的索引分页
                 if primary_order is True and getattr(model, "id", None) is not None:
-                    select_query.order_by(getattr(model, "id").asc())
+                    select_query.append_order_by(getattr(model, "id").asc())
             else:
-                self.gen_query(select_query, query)
+                select_query = self.gen_query(select_query, query)
         except SQLAlchemyError as e:
             aelog.exception(e)
             raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
@@ -708,7 +712,7 @@ class Session(object):
 
         try:
             select_query = select([model] if not query._columns else query._columns)
-            self.gen_query(select_query, query)
+            select_query = self.gen_query(select_query, query)
         except SQLAlchemyError as e:
             aelog.exception(e)
             raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
@@ -730,7 +734,7 @@ class Session(object):
 
         try:
             select_query = select([func.count().label("count")]).select_from(model)
-            self.gen_query(select_query, query)
+            select_query = self.gen_query(select_query, query)
         except SQLAlchemyError as e:
             aelog.exception(e)
             raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
