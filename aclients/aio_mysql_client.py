@@ -421,7 +421,7 @@ class Query(BaseQuery):
         self._verify_model()
         try:
             query = delete(self._model)
-            for one_clause in query._whereclause:
+            for one_clause in self._whereclause:
                 query = query.where(one_clause)
         except SQLAlchemyError as e:
             aelog.exception(e)
@@ -567,9 +567,11 @@ class Query(BaseQuery):
         """
         if is_count is False:
             self.select_query()
+            result = self._compiled_quey(self._query_obj)
         else:
             self.select_query(is_count=True)
-        return self._compiled_quey(self._query_obj)
+            result = self._compiled_quey(self._query_count_obj)
+        return result
 
     def paginate_sql(self, *, page: int = 1, per_page: int = 20,
                      primary_order: bool = True) -> List[Dict[str, Union[str, Dict, List[Dict], None]]]:
