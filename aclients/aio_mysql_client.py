@@ -29,6 +29,7 @@ from sqlalchemy.sql import (Select, all_, and_, any_, asc, bindparam, case, cast
                             intersect_all, join, label, not_, null, nullsfirst, nullslast, or_, outerjoin, over, select,
                             table, text, true, tuple_, type_coerce, union, union_all, update, within_group)
 from sqlalchemy.sql.dml import Delete, Insert, Update, UpdateBase
+from sqlalchemy.sql.elements import TextClause
 
 from .err_msg import mysql_msg
 from .exceptions import ConfigError, FuncArgsError, HttpError, MysqlDuplicateKeyError, MysqlError, QueryArgsError
@@ -773,7 +774,7 @@ class Session(object):
         cursor = await self._query_execute(query._query_obj)
         return await cursor.fetchall() if cursor.returns_rows else []
 
-    async def execute(self, query: str, params: Union[List[Dict], Dict]) -> int:
+    async def execute(self, query: Union[TextClause, str], params: Union[List[Dict], Dict]) -> int:
         """
         插入数据，更新或者删除数据
         Args:
@@ -786,7 +787,7 @@ class Session(object):
         cursor = await self._execute(query, params, 6)
         return cursor.rowcount
 
-    async def query_execute(self, query: str, params: Dict = None, size=None, cursor_close=True
+    async def query_execute(self, query: Union[TextClause, str], params: Dict = None, size=None, cursor_close=True
                             ) -> Union[List[RowProxy], RowProxy, None]:
         """
         查询数据，用于复杂的查询
