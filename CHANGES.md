@@ -1,12 +1,18 @@
 ## aclients Changelog
 
-###[1.0.1b2] - 2020-2-22
+###[1.0.1b2] - 2020-2-28
+
+#### Added 
+- 增加Query类所有的查询操作均在Query类中完成，session类只负责具体的查询
+- Query类中增加生成增删改查SQL字符串语句的功能,方便jrpc调用
+- Query类中增加生成增删改查SQL对象的功能,方便普通调用
 
 #### Changed 
 - 优化所有代码中没有类型标注的地方,都改为typing中的类型标注
 - SanicJsonRPC类中增加init_app方法保证和其他sanic扩展的初始化和调用方式一致
 - jrpc client 和 jrpc server增加jrpc router的修改入口
 - 更改jsonrpc三方包中queue没有使用同一个loop而造成的错误
+- 再次重构session和query类彻底把query和session分开
 
 ###[1.0.1b1] - 2020-2-14
 
