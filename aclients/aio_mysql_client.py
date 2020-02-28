@@ -386,7 +386,7 @@ class Query(BaseQuery):
         eg: where(User.c.id == bindparam("id")).values({"name": bindparam("name")})
          await conn.execute(sql, [{"id": 1, "name": "t1"}, {"id": 2, "name": "t2"}]
         Args:
-            update_data: 值类型
+            update_data: 值类型Dict or List[Dict]
         Returns:
             返回更新的条数
         """
@@ -476,22 +476,24 @@ class Query(BaseQuery):
 
     def paginate_query(self, *, page: int = 1, per_page: int = 20,
                        primary_order: bool = True) -> 'Query':
-        """Returns ``per_page`` items from page ``page``.
-
+        """
         If ``page`` or ``per_page`` are ``None``, they will be retrieved from
         the request query. If ``max_per_page`` is specified, ``per_page`` will
         be limited to that value. If there is no request or they aren't in the
         query, they default to 1 and 20 respectively.
 
-        * No items are found and ``page`` is not 1.
-        * ``page`` is less than 1, or ``per_page`` is negative.
-        * ``page`` or ``per_page`` are not ints.
-        * primary_order: 默认启用主键ID排序的功能，在大数据查询时可以关闭此功能，在90%数据量不大的情况下可以加快分页的速度
-
-        When ``error_out`` is ``False``, ``page`` and ``per_page`` default to
-        1 and 20 respectively.
-
         目前是改造如果limit传递为0，则返回所有的数据，这样业务代码中就不用更改了
+
+        Args:
+            page: page is less than 1, or ``per_page`` is negative.
+            per_page: page or per_page are not ints.
+            primary_order: 默认启用主键ID排序的功能，在大数据查询时可以关闭此功能，在90%数据量不大的情况下可以加快分页的速度
+
+            When ``error_out`` is ``False``, ``page`` and ``per_page`` default to
+            1 and 20 respectively.
+
+        Returns:
+
         """
         if self._max_per_page is not None:
             per_page = min(per_page, self._max_per_page)
@@ -524,80 +526,44 @@ class Query(BaseQuery):
         else:
             return self
 
-    def insert_sql(self, insert_data: Union[List[Dict], Dict]) -> Dict[str, Union[str, Dict, List[Dict], None]]:
+    def sql(self, ) -> Union[Dict[str, Union[str, Dict, List[Dict], None]],
+                             List[Dict[str, Union[str, Dict, List[Dict], None]]]]:
         """
-        insert sql
-        Args:
-            insert_data: 值类型Dict or List[Dict]
-        Returns:
-            {"sql": "insert sql", "params": "insert data"}
-        """
-        self.insert_query(insert_data)
-        return self._compiled_quey(self._query_obj, self._insert_data)
+        generate sql
 
-    def update_sql(self, update_data: Union[List[Dict], Dict]) -> Dict[str, Union[str, Dict, List[Dict], None]]:
-        """
-        update sql
-
-        Args:
-            update_data: 值类型Dict or List[Dict]
-        Returns:
-            {"sql": "update sql", "params": "update data"}
-        """
-        self.update_query(update_data)
-        return self._compiled_quey(self._query_obj, self._update_data)
-
-    def delete_sql(self, ) -> Dict[str, Union[str, Dict, List[Dict], None]]:
-        """
-        delete sql
+        可以生成如下SQL:
+            1.insert sql
+            2.update sql
+            3.delete sql
+            4.select sql
+            5.select count sql
+            6.paginate_sql
         Args:
         Returns:
-            {"sql": "delete sql", "params": "delete params"}
+            1. insert sql {"sql": "insert sql", "params": "insert data"}
+            2. update sql {"sql": "update sql", "params": "update data"}
+            3. delete sql {"sql": "delete sql", "params": "delete params"}
+            4. select sql {"sql": "select sql", "params": "select data"}
+            5. select count sql {"sql": "select sql", "params": "select data"}
+            6. paginate_sql [{"sql": "select sql", "params": "select params"},
+                            {"sql": "select count sql", "params": "select count params"}]
         """
-        self.delete_query()
-        return self._compiled_quey(self._query_obj)
+        result_sql = None
 
-    def select_sql(self, is_count: bool = False) -> Dict[str, Union[str, Dict, List[Dict], None]]:
-        """
-        select sql
-        Args:
-            is_count: 是否为查询数量
-        Returns:
-            {"sql": "select sql", "params": "select data"}
-        """
-        if is_count is False:
-            self.select_query()
-            result = self._compiled_quey(self._query_obj)
-        else:
-            self.select_query(is_count=True)
-            result = self._compiled_quey(self._query_count_obj)
-        return result
+        if self._query_obj is not None and self._query_count_obj is not None:
+            select_sql = self._compiled_quey(self._query_obj)
+            select_count_sql = self._compiled_quey(self._query_count_obj)
+            result_sql = [select_sql, select_count_sql]
+        elif self._query_obj is not None and self._insert_data is not None:
+            result_sql = self._compiled_quey(self._query_obj, self._insert_data)
+        elif self._query_obj is not None and self._update_data is not None:
+            result_sql = self._compiled_quey(self._query_obj, self._update_data)
+        elif self._query_count_obj is not None:
+            result_sql = self._compiled_quey(self._query_count_obj)
+        elif self._query_obj is not None:
+            result_sql = self._compiled_quey(self._query_obj)
 
-    def paginate_sql(self, *, page: int = 1, per_page: int = 20,
-                     primary_order: bool = True) -> List[Dict[str, Union[str, Dict, List[Dict], None]]]:
-        """
-        If ``page`` or ``per_page`` are ``None``, they will be retrieved from
-        the request query. If ``max_per_page`` is specified, ``per_page`` will
-        be limited to that value. If there is no request or they aren't in the
-        query, they default to 1 and 20 respectively.
-        目前是改造如果limit传递为0，则返回所有的数据，这样业务代码中就不用更改了
-
-        Args:
-            page: page is less than 1, or ``per_page`` is negative.
-            per_page: page or per_page are not ints.
-            primary_order: 默认启用主键ID排序的功能，在大数据查询时可以关闭此功能，在90%数据量不大的情况下可以加快分页的速度
-
-            When ``error_out`` is ``False``, ``page`` and ``per_page`` default to
-            1 and 20 respectively.
-
-        Returns:
-            [{"sql": "select sql", "params": "select params"},
-            {"sql": "select count sql", "params": "select count params"}]
-        """
-        self.paginate_query(page=page, per_page=per_page, primary_order=primary_order)
-        select_sql = self._compiled_quey(self._query_obj)
-        select_count_sql = self._compiled_quey(self._query_count_obj)
-        return [select_sql, select_count_sql]
+        return result_sql
 
 
 # noinspection PyProtectedMember
