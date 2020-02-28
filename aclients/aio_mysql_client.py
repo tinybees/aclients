@@ -750,7 +750,7 @@ class Session(object):
             query: SQL的查询字符串
             params: 执行的参数值,可以是单个对象的字典也可以是多个对象的列表
         Returns:
-            不确定执行的是什么查询，直接返回ResultProxy实例
+            返回更新,插入或者删除影响的条数
         """
         params = dict(params) if isinstance(params, MutableMapping) else {}
         cursor = await self._execute(query, params, 6)
