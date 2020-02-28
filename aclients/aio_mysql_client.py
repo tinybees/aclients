@@ -294,15 +294,15 @@ class Query(BaseQuery):
         post_processed_params = _dialect.execute_sequence_format(params)
         return post_processed_params[0]
 
-    def _compiled_quey(self, query: Select, *multiparams: Union[Dict, List[Dict]]
-                       ) -> Tuple[str, Union[Dict, List[Dict], None]]:
+    def _compiled_quey(self, query: Union[Select, Insert, Update, Delete], *multiparams: Union[Dict, List[Dict]]
+                       ) -> Dict[str, Union[str, Dict, List[Dict], None]]:
         """
         compile query to sql
         Args:
             query:
             multiparams:
         Returns:
-
+            {"sql": sql, "params": params}
         """
         bind_params = _distill_params(multiparams, {})
 
@@ -319,7 +319,7 @@ class Query(BaseQuery):
             elif bind_params:
                 params_ = self._base_params(query, bind_params[0], compiled, isinstance(query, UpdateBase))
 
-        return query_, params_
+        return {"sql": query_, "params": params_}
 
     def _verify_model(self, ):
         """
@@ -432,6 +432,7 @@ class Query(BaseQuery):
         """
         select query
         Args:
+            is_count: 是否为数量查询
         Returns:
             返回匹配的数据或者None
         """
@@ -488,8 +489,6 @@ class Query(BaseQuery):
         When ``error_out`` is ``False``, ``page`` and ``per_page`` default to
         1 and 20 respectively.
 
-        Returns a :class:`Pagination` object.
-
         目前是改造如果limit传递为0，则返回所有的数据，这样业务代码中就不用更改了
         """
         if self._max_per_page is not None:
@@ -523,174 +522,78 @@ class Query(BaseQuery):
         else:
             return self
 
-    def insert_sql(self, insert_data: Union[List[Dict], Dict]) -> 'Query':
+    def insert_sql(self, insert_data: Union[List[Dict], Dict]) -> Dict[str, Union[str, Dict, List[Dict], None]]:
         """
         insert sql
         Args:
             insert_data: 值类型Dict or List[Dict]
         Returns:
-            Select object
+            {"sql": "insert sql", "params": "insert data"}
         """
-        self._verify_model()
-        try:
-            insert_data_ = self._get_model_default_value(self._model)
-            if isinstance(insert_data, dict):
-                insert_data_.update(insert_data)
-            else:
-                insert_data_ = [{**insert_data_, **one_data} for one_data in insert_data]
-            query = insert(self._model).values(insert_data_)
-        except SQLAlchemyError as e:
-            aelog.exception(e)
-            raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
-        else:
-            self._query_obj, self._insert_data = query, insert_data_
-            return self
+        self.insert_query(insert_data)
+        return self._compiled_quey(self._query_obj, self._insert_data)
 
-    def update_sql(self, update_data: Union[List[Dict], Dict]) -> 'Query':
+    def update_sql(self, update_data: Union[List[Dict], Dict]) -> Dict[str, Union[str, Dict, List[Dict], None]]:
         """
         update sql
 
-        eg: where(User.c.id == bindparam("id")).values({"name": bindparam("name")})
-         await conn.execute(sql, [{"id": 1, "name": "t1"}, {"id": 2, "name": "t2"}]
         Args:
-            update_data: 值类型
+            update_data: 值类型Dict or List[Dict]
         Returns:
-            返回更新的条数
+            {"sql": "update sql", "params": "update data"}
         """
-        self._verify_model()
-        try:
-            update_data_ = self._get_model_onupdate_value(self._model)
-            if isinstance(update_data, MutableMapping):
-                update_data_ = {**update_data_, **update_data}
-            else:
-                update_data_ = [{**update_data_, **one_data} for one_data in update_data]
+        self.update_query(update_data)
+        return self._compiled_quey(self._query_obj, self._update_data)
 
-            if self._bind_values is None:
-                query = update(self._model).values(update_data_)
-            else:
-                query = update(self._model).values(self._bind_values)
-            for one_clause in self._whereclause:
-                query = query.where(one_clause)
-        except SQLAlchemyError as e:
-            aelog.exception(e)
-            raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
-        else:
-            self._query_obj, self._update_data = query, update_data_
-            return self
-
-    def delete_sql(self, ) -> 'Query':
+    def delete_sql(self, ) -> Dict[str, Union[str, Dict, List[Dict], None]]:
         """
         delete sql
         Args:
         Returns:
-            返回删除的条数
+            {"sql": "delete sql", "params": "delete params"}
         """
-        self._verify_model()
-        try:
-            query = delete(self._model)
-            for one_clause in query._whereclause:
-                query = query.where(one_clause)
-        except SQLAlchemyError as e:
-            aelog.exception(e)
-            raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
-        else:
-            self._query_obj = query
-            return self
+        self.delete_query()
+        return self._compiled_quey(self._query_obj)
 
-    def select_sql(self, is_count: bool = False) -> 'Query':
+    def select_sql(self, is_count: bool = False) -> Dict[str, Union[str, Dict, List[Dict], None]]:
         """
         select sql
         Args:
+            is_count: 是否为查询数量
         Returns:
-            返回匹配的数据或者None
+            {"sql": "select sql", "params": "select data"}
         """
-        try:
-            if is_count is False:
-                query = select([self._model] if not self._columns else self._columns)
-                # 以下的查询只有普通查询才有，和查询数量么有关系
-                if self._order_by:
-                    query.append_order_by(*self._order_by)
-                if self._columns:
-                    query = query.with_only_columns(self._columns)
-                if self._limit_clause is not None:
-                    query = query.limit(self._limit_clause)
-                if self._offset_clause is not None:
-                    query = query.offset(self._offset_clause)
-            else:
-                query = select([func.count().label("count")]).select_from(self._model)
-            # 以下的查询条件都会有
-            if self._with_hint:
-                query = query.with_hint(*self._with_hint)
-            if self._whereclause:
-                for one_clause in self._whereclause:
-                    query.append_whereclause(one_clause)
-            if self._group_by:
-                query.append_group_by(*self._group_by)
-                for one_clause in self._having:
-                    query.append_having(one_clause)
-            if self._distinct:
-                query = query.distinct(*self._distinct)
-        except SQLAlchemyError as e:
-            aelog.exception(e)
-            raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
+        if is_count is False:
+            self.select_query()
         else:
-            if is_count is False:
-                self._query_obj = query
-            else:
-                self._query_count_obj = query
-            return self
+            self.select_query(is_count=True)
+        return self._compiled_quey(self._query_obj)
 
     def paginate_sql(self, *, page: int = 1, per_page: int = 20,
-                     primary_order: bool = True) -> 'Query':
-        """Returns ``per_page`` items from page ``page``.
-
+                     primary_order: bool = True) -> List[Dict[str, Union[str, Dict, List[Dict], None]]]:
+        """
         If ``page`` or ``per_page`` are ``None``, they will be retrieved from
         the request query. If ``max_per_page`` is specified, ``per_page`` will
         be limited to that value. If there is no request or they aren't in the
         query, they default to 1 and 20 respectively.
-
-        * No items are found and ``page`` is not 1.
-        * ``page`` is less than 1, or ``per_page`` is negative.
-        * ``page`` or ``per_page`` are not ints.
-        * primary_order: 默认启用主键ID排序的功能，在大数据查询时可以关闭此功能，在90%数据量不大的情况下可以加快分页的速度
-
-        When ``error_out`` is ``False``, ``page`` and ``per_page`` default to
-        1 and 20 respectively.
-
-        Returns a :class:`Pagination` object.
-
         目前是改造如果limit传递为0，则返回所有的数据，这样业务代码中就不用更改了
+
+        Args:
+            page: page is less than 1, or ``per_page`` is negative.
+            per_page: page or per_page are not ints.
+            primary_order: 默认启用主键ID排序的功能，在大数据查询时可以关闭此功能，在90%数据量不大的情况下可以加快分页的速度
+
+            When ``error_out`` is ``False``, ``page`` and ``per_page`` default to
+            1 and 20 respectively.
+
+        Returns:
+            [{"sql": "select sql", "params": "select params"},
+            {"sql": "select count sql", "params": "select count params"}]
         """
-        if self._max_per_page is not None:
-            per_page = min(per_page, self._max_per_page)
-
-        if page < 1:
-            page = 1
-
-        if per_page < 0:
-            per_page = 20
-
-        self._page, self._per_page = page, per_page
-
-        try:
-            # 如果per_page为0,则证明要获取所有的数据，否则还是通常的逻辑
-            if per_page != 0:
-                self._limit_clause = per_page
-                self._offset_clause = (page - 1) * per_page
-                # 如果分页获取的时候没有进行排序,并且model中有id字段,则增加用id字段的升序排序
-                # 前提是默认id是主键,因为不排序会有混乱数据,所以从中间件直接解决,业务层不需要关心了
-                # 如果业务层有排序了，则此处不再提供排序功能
-                # 如果遇到大数据量的分页查询问题时，建议关闭此处，然后再基于已有的索引分页
-                if primary_order is True and getattr(self._model, "id", None) is not None:
-                    self.order_by(getattr(self._model, "id").asc())
-
-            self.select_query()  # 生成select SQL
-            self.select_query(is_count=True)  # 生成select count SQL
-        except SQLAlchemyError as e:
-            aelog.exception(e)
-            raise QueryArgsError(message="Cloumn args error: {}".format(str(e)))
-        else:
-            return self
+        self.paginate_query(page=page, per_page=per_page, primary_order=primary_order)
+        select_sql = self._compiled_quey(self._query_obj)
+        select_count_sql = self._compiled_quey(self._query_count_obj)
+        return [select_sql, select_count_sql]
 
 
 # noinspection PyProtectedMember
