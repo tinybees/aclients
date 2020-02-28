@@ -315,10 +315,11 @@ class Query(BaseQuery):
 
             if len(bind_params) > 1:
                 params_ = []
-                for one_dp in bind_params:
-                    params_.append(self._base_params(query, one_dp, compiled, isinstance(query, UpdateBase)))
+                for bind_param in bind_params:
+                    params_.append(self._base_params(query, bind_param, compiled, isinstance(query, UpdateBase)))
             elif bind_params:
-                params_ = self._base_params(query, bind_params[0], compiled, isinstance(query, UpdateBase))
+                bind_params = bind_params[0]
+            params_ = self._base_params(query, bind_params, compiled, isinstance(query, UpdateBase))
 
         return {"sql": query_, "params": params_}
 
