@@ -11,7 +11,7 @@ from sanic.exceptions import SanicException
 __all__ = ("ClientError", "ClientResponseError", "ClientConnectionError", "HttpError", "RedisClientError",
            "RedisConnectError", "MysqlDuplicateKeyError", "MysqlError", "MysqlInvalidNameError", "FuncArgsError",
            "Error", "PermissionDeniedError", "QueryArgsError", "MongoError", "MongoDuplicateKeyError",
-           "MongoInvalidNameError", "CommandArgsError", "EmailError", "ConfigError", "JsonRPCError")
+           "MongoInvalidNameError", "CommandArgsError", "EmailError", "ConfigError")
 
 
 class Error(Exception):
@@ -199,11 +199,4 @@ class CommandArgsError(Error):
     处理执行命令时，命令失败错误
     """
 
-    pass
-
-
-class JsonRPCError(Error):
-    """
-    jsron rpc error
-    """
     pass

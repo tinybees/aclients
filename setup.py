@@ -3,7 +3,7 @@
 """
 MIT License
 
-Copyright (c) 2018 Tiny Bees
+Copyright (c) 2020 Tiny Bees
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,7 @@ setup(name='aclients',
       author='TinyBees',
       author_email='a598824322@qq.com',
       url='https://github.com/tinybees/aclients',
-      packages=['aclients', 'aclients.tinylibs', 'aclients.jsonrpc'],
+      packages=['aclients', 'aclients.tinylibs'],
       entry_points={},
       requires=['sanic', 'aelog', 'aredis', 'hiredis', 'aiomysql', 'sqlalchemy', 'aiohttp', 'cchardet', 'aiodns',
                 'motor', 'ujson', 'marshmallow', 'PyYAML'],
@@ -70,5 +70,6 @@ setup(name='aclients',
           'Programming Language :: Python',
           'Programming Language :: Python :: 3.5',
           'Programming Language :: Python :: 3.6',
-          'Programming Language :: Python :: 3.7']
+          'Programming Language :: Python :: 3.7',
+          'Programming Language :: Python :: 3.8']
       )
