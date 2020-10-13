@@ -190,16 +190,16 @@ class AIORedisClient(object):
             raise RedisClientError(str(e))
         else:
             # 清除老的令牌
-            try:
-                old_session_id = await self.get_hash_data(self._account_key, field_name=session.account_id)
-            except RedisClientError as e:
-                aelog.info(f"{session.account_id} no old token token, {str(e)}")
-            else:
-                with ignore_error():
-                    await self.delete_session(old_session_id, False)
-            # 更新新的令牌
-            await self.save_update_hash_data(self._account_key, field_name=session.account_id,
-                                             hash_data=session.session_id, ex=LONG_EXPIRED)
+            # try:
+            #     old_session_id = await self.get_hash_data(self._account_key, field_name=session.account_id)
+            # except RedisClientError as e:
+            #     aelog.info(f"{session.account_id} no old token token, {str(e)}")
+            # else:
+            #     with ignore_error():
+            #         await self.delete_session(old_session_id, False)
+            # # 更新新的令牌
+            # await self.save_update_hash_data(self._account_key, field_name=session.account_id,
+            #                                  hash_data=session.session_id, ex=LONG_EXPIRED)
             return session.session_id
 
     @staticmethod
@@ -242,8 +242,8 @@ class AIORedisClient(object):
 
             with ignore_error():  # 删除已经存在的和账户相关的缓存key
                 await self.delete_keys(exist_keys)
-                if delete_key is True:
-                    await self.redis_db.hdel(self._account_key, session_data["account_id"])
+                # if delete_key is True:
+                #     await self.redis_db.hdel(self._account_key, session_data["account_id"])
 
             if not await self.redis_db.delete(session_id):
                 aelog.error("delete session failed, session_id={}".format(session_id))
@@ -272,10 +272,10 @@ class AIORedisClient(object):
         except RedisError as e:
             aelog.exception("update session error: {}, {}".format(session_data["session_id"], e))
             raise RedisClientError(str(e))
-        else:
-            # 更新令牌
-            await self.save_update_hash_data(self._account_key, field_name=session.account_id,
-                                             hash_data=session.session_id, ex=LONG_EXPIRED)
+        # else:
+        # 更新令牌
+        # await self.save_update_hash_data(self._account_key, field_name=session.account_id,
+        #                                  hash_data=session.session_id, ex=LONG_EXPIRED)
 
     async def get_session(self, session_id: str, ex: int = SESSION_EXPIRED, cls_flag: bool = True,
                           load_responses: bool = False) -> Union[Session, Dict[str, str]]:
