@@ -14,10 +14,10 @@ import sys
 import weakref
 from collections import MutableMapping, MutableSequence
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager
 from typing import Dict, List, Union
 
 import yaml
+from aiocontext import async_contextmanager
 from bson import ObjectId
 
 from aclients.exceptions import Error, FuncArgsError
@@ -27,8 +27,8 @@ try:
 except ImportError:
     from yaml import Loader
 
-__all__ = ("ignore_error", "verify_message", "wrap_async_func", "analysis_yaml", "gen_class_name", "objectid",
-           "Singleton", "Cached", "gen_ident")
+__all__ = ("async_ignore_error", "verify_message", "wrap_async_func", "analysis_yaml",
+           "gen_class_name", "objectid", "Singleton", "Cached", "gen_ident")
 
 # 执行任务的线程池
 pool = ThreadPoolExecutor(multiprocessing.cpu_count() * 10 + multiprocessing.cpu_count())
@@ -48,8 +48,8 @@ def gen_ident(ident_len: int = 8):
     return f"{secrets.choice(string.ascii_lowercase)}{ident}"
 
 
-@contextmanager
-def ignore_error(error=Exception):
+@async_contextmanager
+async def async_ignore_error(error=Exception):
     """
     个别情况下会忽略遇到的错误
     Args:

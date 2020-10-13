@@ -12,3 +12,4 @@ ujson
 marshmallow>=3.0.0rc3
 PyYAML>=3.13
 pymongo>=3.8.0
+asyncio-contextmanager==1.0.1

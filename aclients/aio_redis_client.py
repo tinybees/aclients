@@ -18,7 +18,7 @@ import ujson
 from aredis import RedisError
 
 from .exceptions import RedisClientError
-from .utils import ignore_error
+from .utils import async_ignore_error
 
 __all__ = ("Session", "AIORedisClient")
 
@@ -195,7 +195,7 @@ class AIORedisClient(object):
             # except RedisClientError as e:
             #     aelog.info(f"{session.account_id} no old token token, {str(e)}")
             # else:
-            #     with ignore_error():
+            #     async with async_ignore_error():
             #         await self.delete_session(old_session_id, False)
             # # 更新新的令牌
             # await self.save_update_hash_data(self._account_key, field_name=session.account_id,
@@ -210,7 +210,7 @@ class AIORedisClient(object):
             hash_data = {}
             for hash_key, hash_val in session_data.items():
                 if not isinstance(hash_val, str):
-                    with ignore_error():
+                    async with async_ignore_error():
                         hash_val = ujson.dumps(hash_val)
                 hash_data[hash_key] = hash_val
             session_data = hash_data
@@ -240,7 +240,7 @@ class AIORedisClient(object):
             exist_keys.append(session_data["page_id"])
             exist_keys.append(session_data["page_menu_id"])
 
-            with ignore_error():  # 删除已经存在的和账户相关的缓存key
+            async with async_ignore_error():  # 删除已经存在的和账户相关的缓存key
                 await self.delete_keys(exist_keys)
                 # if delete_key is True:
                 #     await self.redis_db.hdel(self._account_key, session_data["account_id"])
@@ -305,7 +305,7 @@ class AIORedisClient(object):
             if load_responses:
                 hash_data = {}
                 for hash_key, hash_val in session_data.items():
-                    with ignore_error():
+                    async with async_ignore_error():
                         hash_val = ujson.loads(hash_val)
                     hash_data[hash_key] = hash_val
                 session_data = hash_data
@@ -357,7 +357,7 @@ class AIORedisClient(object):
                     rs_data = {}
                     for hash_key, hash_val in hash_data.items():
                         if not isinstance(hash_val, str):
-                            with ignore_error():
+                            async with async_ignore_error():
                                 hash_val = ujson.dumps(hash_val)
                         rs_data[hash_key] = hash_val
                     hash_data = rs_data
@@ -392,7 +392,7 @@ class AIORedisClient(object):
                 hash_data = await self.redis_db.hget(name, field_name)
                 # 返回的键值对是否做load
                 if load_responses:
-                    with ignore_error():
+                    async with async_ignore_error():
                         hash_data = ujson.loads(hash_data)
             else:
                 hash_data = await self.redis_db.hgetall(name)
@@ -400,7 +400,7 @@ class AIORedisClient(object):
                 if load_responses:
                     rs_data = {}
                     for hash_key, hash_val in hash_data.items():
-                        with ignore_error():
+                        async with async_ignore_error():
                             hash_val = ujson.loads(hash_val)
                         rs_data[hash_key] = hash_val
                     hash_data = rs_data
@@ -521,7 +521,7 @@ class AIORedisClient(object):
                 aelog.error("set expire failed, name={}".format(name))
 
         if load_responses:
-            with ignore_error():
+            async with async_ignore_error():
                 data = ujson.loads(data)
 
         return data
