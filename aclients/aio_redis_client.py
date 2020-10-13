@@ -24,7 +24,7 @@ __all__ = ("Session", "AIORedisClient")
 
 LONG_EXPIRED: int = 24 * 60 * 60  # 最长过期时间
 EXPIRED: int = 12 * 60 * 60  # 通用过期时间
-SESSION_EXPIRED: int = 30 * 60  # session过期时间
+SESSION_EXPIRED: int = 60 * 60  # session过期时间
 
 
 class Session(object):
